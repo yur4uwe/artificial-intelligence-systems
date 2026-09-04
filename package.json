@@ -1,0 +1,21 @@
+{
+  "name": "ais",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/bun": "latest",
+    "lucide": "^1.41.0",
+    "tailwindcss": "^4.3.3",
+    "vite": "^8.2.2"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

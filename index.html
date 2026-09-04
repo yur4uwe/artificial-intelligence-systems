@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="uk" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AIS Labs — Методи та Системи ШІ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
+  <!-- Top App Navigation Bar -->
+  <header class="h-14 border-b border-slate-800 bg-slate-900/90 backdrop-blur px-4 flex items-center justify-between shrink-0 z-30">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/30">
+        AI
+      </div>
+      <div>
+        <h1 class="text-sm font-semibold text-slate-100 leading-tight">Системи Штучного Інтелекту</h1>
+        <p class="text-xs text-slate-400">ЛНУ ім. Івана Франка • Лабораторні роботи</p>
+      </div>
+    </div>
+
+    <!-- Lab Switcher Navigation Tabs (Lazy Loaded) -->
+    <nav class="flex items-center bg-slate-950/80 p-1 rounded-xl border border-slate-800" id="lab-tabs-nav">
+      <!-- Dynamically populated from labs/registry.ts -->
+    </nav>
+
+    <!-- Header Actions (Theme, Info, Export) -->
+    <div class="flex items-center gap-2" id="header-actions">
+      <button id="btn-export-screenshot" title="Зберегти знімок графа (PNG)" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
+        <span>📸 Знімок</span>
+      </button>
+      <button id="btn-export-data" title="Експорт результатів у CSV" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
+        <span>📊 Експорт CSV</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Viewport for Active Lab -->
+  <main id="app-viewport" class="flex-1 flex overflow-hidden relative">
+    <!-- Active Lab mounts here -->
+    <div id="lab-container" class="w-full h-full flex"></div>
+    
+    <!-- Loading Overlay for Lazy Loading -->
+    <div id="loading-overlay" class="hidden absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center">
+      <div class="flex flex-col items-center gap-3">
+        <div class="w-8 h-8 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+        <p class="text-sm text-slate-300 font-medium">Завантаження модуля лабораторної...</p>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
