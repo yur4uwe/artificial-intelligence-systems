@@ -2,202 +2,202 @@ import { StepEvent, LabMetrics } from '../../types';
 import { GraphModel, NeighborSortingStrategy } from '../../common/graph/graph-model';
 
 export interface BFSOptions {
-  model: GraphModel;
-  startId: number;
-  goalId: number;
-  sortingStrategy: NeighborSortingStrategy;
+    model: GraphModel;
+    startId: number;
+    goalId: number;
+    sortingStrategy: NeighborSortingStrategy;
 }
 
 export function* runBFS(options: BFSOptions): Generator<StepEvent, LabMetrics, unknown> {
-  const { model, startId, goalId, sortingStrategy } = options;
-  const startTime = performance.now();
+    const { model, startId, goalId, sortingStrategy } = options;
+    const startTime = performance.now();
 
-  const startNode = model.getNode(startId);
-  const goalNode = model.getNode(goalId);
+    const startNode = model.getNode(startId);
+    const goalNode = model.getNode(goalId);
 
-  let stepCounter = 0;
-  let cycleCounter = 0;
-  let openedCounter = 0;
+    let stepCounter = 0;
+    let cycleCounter = 0;
+    let openedCounter = 0;
 
-  if (!startNode || !goalNode) {
-    const errorMetrics: LabMetrics = {
-      foundPath: null,
-      pathLength: 0,
-      openedVerticesCount: 0,
-      cyclesCount: 0,
-      executionTimeMs: 0,
-      visitedOrder: [],
-      isSuccess: false,
-      statusText: 'Помилка: Початкова або цільова вершина не знайдена в графі',
-    };
+    if (!startNode || !goalNode) {
+        const errorMetrics: LabMetrics = {
+            foundPath: null,
+            pathLength: 0,
+            openedVerticesCount: 0,
+            cyclesCount: 0,
+            executionTimeMs: 0,
+            visitedOrder: [],
+            isSuccess: false,
+            statusText: 'Помилка: Початкова або цільова вершина не знайдена в графі',
+        };
+        yield {
+            stepIndex: 0,
+            currentNodeId: null,
+            queue: [],
+            visited: [],
+            openedCount: 0,
+            cycleCount: 0,
+            actionDescription: errorMetrics.statusText,
+            status: 'not-found',
+        };
+        return errorMetrics;
+    }
+
+    // FIFO Queue for BFS
+    const queue: number[] = [startId];
+    const visited = new Set<number>([startId]);
+    const parentMap = new Map<number, number>();
+    const visitedOrder: number[] = [startId];
+
+    // Initial Step
     yield {
-      stepIndex: 0,
-      currentNodeId: null,
-      queue: [],
-      visited: [],
-      openedCount: 0,
-      cycleCount: 0,
-      actionDescription: errorMetrics.statusText,
-      status: 'not-found',
-    };
-    return errorMetrics;
-  }
-
-  // FIFO Queue for BFS
-  const queue: number[] = [startId];
-  const visited = new Set<number>([startId]);
-  const parentMap = new Map<number, number>();
-  const visitedOrder: number[] = [startId];
-
-  // Initial Step
-  yield {
-    stepIndex: ++stepCounter,
-    currentNodeId: startId,
-    queue: [...queue],
-    visited: Array.from(visited),
-    openedCount: 0,
-    cycleCount: 0,
-    actionDescription: `Ініціалізація пошуку. Додавання початкової вершини v${startId} до черги FIFO.`,
-    status: 'running',
-  };
-
-  // Check if start is already goal
-  if (startId === goalId) {
-    const duration = performance.now() - startTime;
-    const metrics: LabMetrics = {
-      foundPath: [startId],
-      pathLength: 0,
-      openedVerticesCount: 1,
-      cyclesCount: 1,
-      executionTimeMs: duration,
-      visitedOrder: [startId],
-      isSuccess: true,
-      statusText: `Ціль v${goalId} співпадає з початковою вершиною v${startId}!`,
-    };
-    yield {
-      stepIndex: ++stepCounter,
-      currentNodeId: startId,
-      queue: [],
-      visited: [startId],
-      openedCount: 1,
-      cycleCount: 1,
-      foundPath: [startId],
-      actionDescription: metrics.statusText,
-      status: 'found',
-    };
-    return metrics;
-  }
-
-  let isGoalFound = false;
-
-  while (queue.length > 0) {
-    cycleCounter++;
-    const currentId = queue.shift()!;
-    openedCounter++;
-
-    yield {
-      stepIndex: ++stepCounter,
-      currentNodeId: currentId,
-      queue: [...queue],
-      visited: Array.from(visited),
-      openedCount: openedCounter,
-      cycleCount: cycleCounter,
-      actionDescription: `Розкриття вершини v${currentId} (цикл #${cycleCounter}, розкрито ${openedCounter}). Отримання списку суміжних вершин.`,
-      status: 'running',
+        stepIndex: ++stepCounter,
+        currentNodeId: startId,
+        queue: [...queue],
+        visited: Array.from(visited),
+        openedCount: 0,
+        cycleCount: 0,
+        actionDescription: `Ініціалізація пошуку. Додавання початкової вершини v${startId} до черги FIFO.`,
+        status: 'running',
     };
 
-    // Get sorted neighbors according to selected lab strategy
-    const neighbors = model.getNeighbors(currentId, sortingStrategy);
+    // Check if start is already goal
+    if (startId === goalId) {
+        const duration = performance.now() - startTime;
+        const metrics: LabMetrics = {
+            foundPath: [startId],
+            pathLength: 0,
+            openedVerticesCount: 1,
+            cyclesCount: 1,
+            executionTimeMs: duration,
+            visitedOrder: [startId],
+            isSuccess: true,
+            statusText: `Ціль v${goalId} співпадає з початковою вершиною v${startId}!`,
+        };
+        yield {
+            stepIndex: ++stepCounter,
+            currentNodeId: startId,
+            queue: [],
+            visited: [startId],
+            openedCount: 1,
+            cycleCount: 1,
+            foundPath: [startId],
+            actionDescription: metrics.statusText,
+            status: 'found',
+        };
+        return metrics;
+    }
 
-    for (const neighborId of neighbors) {
-      if (!visited.has(neighborId)) {
-        visited.add(neighborId);
-        visitedOrder.push(neighborId);
-        parentMap.set(neighborId, currentId);
-        queue.push(neighborId);
+    let isGoalFound = false;
+
+    while (queue.length > 0) {
+        cycleCounter++;
+        const currentId = queue.shift()!;
+        openedCounter++;
 
         yield {
-          stepIndex: ++stepCounter,
-          currentNodeId: currentId,
-          activeEdge: { from: currentId, to: neighborId },
-          queue: [...queue],
-          visited: Array.from(visited),
-          openedCount: openedCounter,
-          cycleCount: cycleCounter,
-          actionDescription: `Перехід по дузі v${currentId} → v${neighborId}. Додавання v${neighborId} до черги FIFO.`,
-          status: 'running',
+            stepIndex: ++stepCounter,
+            currentNodeId: currentId,
+            queue: [...queue],
+            visited: Array.from(visited),
+            openedCount: openedCounter,
+            cycleCount: cycleCounter,
+            actionDescription: `Розкриття вершини v${currentId} (цикл #${cycleCounter}, розкрито ${openedCounter}). Отримання списку суміжних вершин.`,
+            status: 'running',
         };
 
-        if (neighborId === goalId) {
-          isGoalFound = true;
-          break;
+        // Get sorted neighbors according to selected lab strategy
+        const neighbors = model.getNeighbors(currentId, sortingStrategy);
+
+        for (const neighborId of neighbors) {
+            if (!visited.has(neighborId)) {
+                visited.add(neighborId);
+                visitedOrder.push(neighborId);
+                parentMap.set(neighborId, currentId);
+                queue.push(neighborId);
+
+                yield {
+                    stepIndex: ++stepCounter,
+                    currentNodeId: currentId,
+                    activeEdge: { from: currentId, to: neighborId },
+                    queue: [...queue],
+                    visited: Array.from(visited),
+                    openedCount: openedCounter,
+                    cycleCount: cycleCounter,
+                    actionDescription: `Перехід по дузі v${currentId} → v${neighborId}. Додавання v${neighborId} до черги FIFO.`,
+                    status: 'running',
+                };
+
+                if (neighborId === goalId) {
+                    isGoalFound = true;
+                    break;
+                }
+            }
         }
-      }
+
+        if (isGoalFound) {
+            break;
+        }
     }
+
+    const duration = performance.now() - startTime;
 
     if (isGoalFound) {
-      break;
+        // Reconstruct path from goal to start
+        const path: number[] = [];
+        let curr: number | undefined = goalId;
+        while (curr !== undefined) {
+            path.unshift(curr);
+            curr = parentMap.get(curr);
+        }
+
+        const metrics: LabMetrics = {
+            foundPath: path,
+            pathLength: path.length - 1,
+            openedVerticesCount: openedCounter,
+            cyclesCount: cycleCounter,
+            executionTimeMs: duration,
+            visitedOrder,
+            isSuccess: true,
+            statusText: `Ціль v${goalId} знайдено! Довжина шляху: ${path.length - 1} ребер.`,
+        };
+
+        yield {
+            stepIndex: ++stepCounter,
+            currentNodeId: goalId,
+            queue: [...queue],
+            visited: Array.from(visited),
+            openedCount: openedCounter,
+            cycleCount: cycleCounter,
+            foundPath: path,
+            actionDescription: ` Цільова вершина v${goalId} успішно знайдена! Побудовано найкоротший шлях: ${path.join(' -> ')}.`,
+            status: 'found',
+        };
+
+        return metrics;
+    } else {
+        const metrics: LabMetrics = {
+            foundPath: null,
+            pathLength: 0,
+            openedVerticesCount: openedCounter,
+            cyclesCount: cycleCounter,
+            executionTimeMs: duration,
+            visitedOrder,
+            isSuccess: false,
+            statusText: `Шлях між вершинами v${startId} та v${goalId} не існує. Черга вичерпана.`,
+        };
+
+        yield {
+            stepIndex: ++stepCounter,
+            currentNodeId: null,
+            queue: [],
+            visited: Array.from(visited),
+            openedCount: openedCounter,
+            cycleCount: cycleCounter,
+            actionDescription: `Пошук завершено. Цільова вершина v${goalId} недосяжна з v${startId}.`,
+            status: 'not-found',
+        };
+
+        return metrics;
     }
-  }
-
-  const duration = performance.now() - startTime;
-
-  if (isGoalFound) {
-    // Reconstruct path from goal to start
-    const path: number[] = [];
-    let curr: number | undefined = goalId;
-    while (curr !== undefined) {
-      path.unshift(curr);
-      curr = parentMap.get(curr);
-    }
-
-    const metrics: LabMetrics = {
-      foundPath: path,
-      pathLength: path.length - 1,
-      openedVerticesCount: openedCounter,
-      cyclesCount: cycleCounter,
-      executionTimeMs: duration,
-      visitedOrder,
-      isSuccess: true,
-      statusText: `Ціль v${goalId} знайдено! Довжина шляху: ${path.length - 1} ребер.`,
-    };
-
-    yield {
-      stepIndex: ++stepCounter,
-      currentNodeId: goalId,
-      queue: [...queue],
-      visited: Array.from(visited),
-      openedCount: openedCounter,
-      cycleCount: cycleCounter,
-      foundPath: path,
-      actionDescription: `🎉 Цільова вершина v${goalId} успішно знайдена! Побудовано найкоротший шлях: ${path.join(' → ')}.`,
-      status: 'found',
-    };
-
-    return metrics;
-  } else {
-    const metrics: LabMetrics = {
-      foundPath: null,
-      pathLength: 0,
-      openedVerticesCount: openedCounter,
-      cyclesCount: cycleCounter,
-      executionTimeMs: duration,
-      visitedOrder,
-      isSuccess: false,
-      statusText: `Шлях між вершинами v${startId} та v${goalId} не існує. Черга вичерпана.`,
-    };
-
-    yield {
-      stepIndex: ++stepCounter,
-      currentNodeId: null,
-      queue: [],
-      visited: Array.from(visited),
-      openedCount: openedCounter,
-      cycleCount: cycleCounter,
-      actionDescription: `❌ Пошук завершено. Цільова вершина v${goalId} недосяжна з v${startId}.`,
-      status: 'not-found',
-    };
-
-    return metrics;
-  }
 }

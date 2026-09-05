@@ -2,14 +2,72 @@ import { GraphData, GraphNode, GraphEdge, NodeVisualState, EdgeVisualState } fro
 
 export type NeighborSortingStrategy = 'ascending-id' | 'descending-id' | 'clockwise' | 'custom';
 
+export interface GraphConstraints {
+  allowCycles: boolean;
+  allowDirectedEdges: boolean;
+  allowUndirectedEdges: boolean;
+  allowSelfLoops: boolean;
+  maxEdgesPerNode: number;
+}
+
+export const DEFAULT_GRAPH_CONSTRAINTS: GraphConstraints = {
+  allowCycles: true,
+  allowDirectedEdges: true,
+  allowUndirectedEdges: true,
+  allowSelfLoops: false,
+  maxEdgesPerNode: Infinity,
+};
+
+export const TREE_CONSTRAINTS: GraphConstraints = {
+  allowCycles: false,
+  allowDirectedEdges: false,
+  allowUndirectedEdges: true,
+  allowSelfLoops: false,
+  maxEdgesPerNode: Infinity,
+};
+
+export const UNDIRECTED_GRAPH_CONSTRAINTS: GraphConstraints = {
+  allowCycles: true,
+  allowDirectedEdges: false,
+  allowUndirectedEdges: true,
+  allowSelfLoops: false,
+  maxEdgesPerNode: Infinity,
+};
+
+export const DIRECTED_GRAPH_CONSTRAINTS: GraphConstraints = {
+  allowCycles: true,
+  allowDirectedEdges: true,
+  allowUndirectedEdges: false,
+  allowSelfLoops: false,
+  maxEdgesPerNode: Infinity,
+};
+
+export interface EdgeValidationResult {
+  valid: boolean;
+  reason?: string;
+}
+
 export class GraphModel {
   private nodesMap: Map<number, GraphNode> = new Map();
   private edgesList: GraphEdge[] = [];
+  private constraints: GraphConstraints = DEFAULT_GRAPH_CONSTRAINTS;
 
-  constructor(initialData?: GraphData) {
+  constructor(initialData?: GraphData, constraints: GraphConstraints = DEFAULT_GRAPH_CONSTRAINTS) {
+    this.constraints = { ...constraints };
     if (initialData) {
       this.loadData(initialData);
     }
+  }
+
+  public setConstraints(constraints: Partial<GraphConstraints>): void {
+    this.constraints = {
+      ...this.constraints,
+      ...constraints,
+    };
+  }
+
+  public getConstraints(): GraphConstraints {
+    return { ...this.constraints };
   }
 
   public loadData(data: GraphData): void {
@@ -33,7 +91,7 @@ export class GraphModel {
   }
 
   public clone(): GraphModel {
-    return new GraphModel(this.getData());
+    return new GraphModel(this.getData(), this.constraints);
   }
 
   public getNodes(): GraphNode[] {
@@ -49,7 +107,6 @@ export class GraphModel {
   }
 
   public addNode(x: number, y: number, label?: string): GraphNode {
-    // Determine next available ID
     let maxId = 0;
     this.nodesMap.forEach((_, id) => {
       if (id > maxId) maxId = id;
@@ -72,8 +129,97 @@ export class GraphModel {
     this.edgesList = this.edgesList.filter(e => e.from !== id && e.to !== id);
   }
 
+  /**
+   * Checks if an undirected or directed path exists between two nodes.
+   */
+  public hasPath(fromId: number, toId: number, isDirected: boolean = false): boolean {
+    if (fromId === toId) return true;
+    if (!this.nodesMap.has(fromId) || !this.nodesMap.has(toId)) return false;
+
+    const visited = new Set<number>([fromId]);
+    const queue: number[] = [fromId];
+
+    while (queue.length > 0) {
+      const curr = queue.shift()!;
+      if (curr === toId) return true;
+
+      const neighbors = this.getNeighbors(curr);
+      for (const neighbor of neighbors) {
+        if (isDirected) {
+          const edge = this.edgesList.find(e => e.from === curr && e.to === neighbor && e.isDirected);
+          if (!edge) continue;
+        }
+        if (!visited.has(neighbor)) {
+          visited.add(neighbor);
+          queue.push(neighbor);
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Validates whether an edge can be added according to the model's structural constraints.
+   */
+  public canAddEdge(from: number, to: number, isDirected: boolean = false): EdgeValidationResult {
+    if (from === to && !this.constraints.allowSelfLoops) {
+      return { valid: false, reason: 'Петлі (ребра вершини до самої себе) заборонені' };
+    }
+
+    if (!this.nodesMap.has(from) || !this.nodesMap.has(to)) {
+      return { valid: false, reason: 'Одна з вершин не існує в графі' };
+    }
+
+    if (isDirected && !this.constraints.allowDirectedEdges) {
+      return { valid: false, reason: 'Орієнтовані дуги заборонені для цього типу графа' };
+    }
+
+    if (!isDirected && !this.constraints.allowUndirectedEdges) {
+      return { valid: false, reason: 'Неорієнтовані ребра заборонені для орієнтованого графа' };
+    }
+
+    // Check if edge already exists
+    const existing = this.edgesList.find(e => 
+      (e.from === from && e.to === to) || 
+      (!isDirected && !e.isDirected && e.from === to && e.to === from)
+    );
+    if (existing) {
+      return { valid: true };
+    }
+
+    // Max degree check
+    const fromDegree = this.edgesList.filter(e => e.from === from || (!e.isDirected && e.to === from)).length;
+    const toDegree = this.edgesList.filter(e => e.to === to || (!e.isDirected && e.from === to)).length;
+    if (fromDegree >= this.constraints.maxEdgesPerNode || toDegree >= this.constraints.maxEdgesPerNode) {
+      return {
+        valid: false,
+        reason: `Перевищено максимальну кількість зв'язків для вершини (${this.constraints.maxEdgesPerNode})`,
+      };
+    }
+
+    // Cycle invariant check
+    if (!this.constraints.allowCycles) {
+      if (!isDirected && this.hasPath(from, to, false)) {
+        return {
+          valid: false,
+          reason: 'Неможливо створити ребро: це утворить цикл (порушення структури дерева)',
+        };
+      }
+      if (isDirected && this.hasPath(to, from, true)) {
+        return {
+          valid: false,
+          reason: 'Неможливо створити дугу: це утворить орієнтований цикл',
+        };
+      }
+    }
+
+    return { valid: true };
+  }
+
   public addEdge(from: number, to: number, isDirected: boolean = false, weight?: number): GraphEdge | null {
-    if (from === to || !this.nodesMap.has(from) || !this.nodesMap.has(to)) {
+    const validation = this.canAddEdge(from, to, isDirected);
+    if (!validation.valid) {
+      console.warn(`[GraphModel] addEdge rejected: ${validation.reason}`);
       return null;
     }
 
@@ -131,7 +277,6 @@ export class GraphModel {
 
     const neighbors = Array.from(neighborsSet);
 
-    // Apply sorting strategy as requested by Lab 1 requirements
     switch (strategy) {
       case 'ascending-id':
         return neighbors.sort((a, b) => a - b);
@@ -140,7 +285,6 @@ export class GraphModel {
         return neighbors.sort((a, b) => b - a);
 
       case 'clockwise': {
-        // Sort by polar angle relative to fromNode (0 to 2*PI)
         return neighbors.sort((a, b) => {
           const nodeA = this.nodesMap.get(a)!;
           const nodeB = this.nodesMap.get(b)!;

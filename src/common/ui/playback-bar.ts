@@ -34,27 +34,27 @@ export class PlaybackBar {
       <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-900/90 border border-slate-800 rounded-xl p-3 shadow-lg backdrop-blur">
         <!-- Playback Buttons -->
         <div class="flex items-center gap-1.5">
-          <button id="pb-btn-play" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-medium text-xs bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30 transition active:scale-95">
+          <button id="pb-btn-play" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-medium text-xs bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-600/25 transition active:scale-95">
             <span>▶</span>
             <span>Запуск</span>
           </button>
           
-          <button id="pb-btn-pause" class="hidden items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-medium text-xs bg-amber-600 hover:bg-amber-500 text-white shadow-md shadow-amber-600/30 transition active:scale-95">
+          <button id="pb-btn-pause" class="hidden items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-medium text-xs bg-amber-600 hover:bg-amber-500 text-white shadow-md shadow-amber-600/25 transition active:scale-95">
             <span>⏸</span>
             <span>Пауза</span>
           </button>
 
-          <button id="pb-btn-step" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition active:scale-95">
+          <button id="pb-btn-step" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-medium text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition active:scale-95">
             <span>⏭</span>
             <span>Крок</span>
           </button>
 
-          <button id="pb-btn-instant" title="Виконати пошук миттєво для отримання метрик" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition active:scale-95">
+          <button id="pb-btn-instant" title="Виконати пошук миттєво для отримання метрик" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-medium text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition active:scale-95">
             <span>⚡</span>
             <span>Миттєво</span>
           </button>
 
-          <button id="pb-btn-reset" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium text-xs bg-slate-800 hover:bg-slate-700 text-rose-300 border border-slate-700 transition active:scale-95">
+          <button id="pb-btn-reset" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-medium text-xs bg-slate-800 hover:bg-slate-700 text-rose-300 border border-slate-700 transition active:scale-95">
             <span>↺</span>
             <span>Скинути</span>
           </button>
@@ -72,7 +72,7 @@ export class PlaybackBar {
             value="${this.runner.getSpeed()}" 
             class="flex-1 cursor-pointer"
           >
-          <span id="pb-speed-val" class="text-xs font-mono font-semibold text-indigo-400 w-12 text-right">
+          <span id="pb-speed-val" class="text-xs font-mono font-semibold text-blue-400 w-12 text-right">
             ${this.runner.getSpeed()}ms
           </span>
         </div>
