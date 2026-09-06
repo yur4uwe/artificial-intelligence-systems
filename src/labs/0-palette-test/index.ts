@@ -1,12 +1,12 @@
-import { LabModule } from '../../types';
+import { LabModule } from '@/types';
 import { 
     ThemePalette, 
     getActiveTheme, 
     setActiveTheme, 
     onThemeChange, 
     PRESET_THEMES 
-} from '../../common/theme/palette';
-import { CALM_MINIMAL_DARK_THEME } from '../../common/theme/available/calm_minimal_dark';
+} from '@common/theme/palette';
+import { CALM_MINIMAL_DARK_THEME } from '@common/theme/available/calm_minimal_dark';
 import { PaletteSpecimensRenderer } from './specimen-renderer';
 import templateHtml from './palette-test.html?raw';
 

@@ -1,4 +1,4 @@
-import { LabMetrics, StepEvent } from '../../types';
+import { LabMetrics, StepEvent } from '@/types';
 
 export interface SearchRunnerCallbacks {
     onStep: (event: StepEvent) => void;

@@ -1,5 +1,5 @@
-import { NeighborSortingStrategy } from '../../common/graph/graph-model';
-import { CanvasInteractionMode } from '../../common/graph/canvas-renderer';
+import { NeighborSortingStrategy } from '@common/graph/graph-model';
+import { CanvasInteractionMode } from '@common/graph/canvas-renderer';
 import lab1ParamsHtml from './lab1-params.html?raw';
 
 export interface Lab1UIOptions {

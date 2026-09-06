@@ -1,8 +1,8 @@
-import './style.css';
-import { LABS_REGISTRY } from './labs/registry';
-import { LabModule } from './types';
-import { downloadFile, exportCanvasToPNG } from './common/graph/export-utils';
-import { applyThemeToCss, onThemeChange } from './common/theme/palette';
+import '@/style.css';
+import { LABS_REGISTRY } from '@labs/registry';
+import { LabModule } from '@/types';
+import { downloadFile, exportCanvasToPNG } from '@common/graph/export-utils';
+import { applyThemeToCss, onThemeChange } from '@common/theme/palette';
 
 class App {
     private activeLabId: string | null = null;

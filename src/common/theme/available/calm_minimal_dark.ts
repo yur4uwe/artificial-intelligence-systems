@@ -1,4 +1,4 @@
-import { ThemePalette } from "../palette";
+import { ThemePalette } from '@common/theme/palette';
 
 export const CALM_MINIMAL_DARK_THEME: ThemePalette = {
     id: 'calm-dark',

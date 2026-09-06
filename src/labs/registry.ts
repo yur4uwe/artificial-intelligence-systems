@@ -1,4 +1,4 @@
-import { LabManifest } from '../types';
+import { LabManifest } from '@/types';
 
 export const LABS_REGISTRY: LabManifest[] = [
     {

@@ -1,5 +1,5 @@
-import { CALM_MINIMAL_DARK_THEME } from "./available/calm_minimal_dark";
-import { LIGHT_STUDIO_THEME } from "./available/light_studio";
+import { CALM_MINIMAL_DARK_THEME } from '@common/theme/available/calm_minimal_dark';
+import { LIGHT_STUDIO_THEME } from '@common/theme/available/light_studio';
 
 export interface ThemePalette {
     id: string;

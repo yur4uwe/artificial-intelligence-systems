@@ -1,4 +1,4 @@
-import { RunnerStatus, SearchRunner } from '../engine/search-runner';
+import { RunnerStatus, SearchRunner } from '@common/engine/search-runner';
 import playbackBarHtml from './playback_bar.html?raw';
 
 export interface PlaybackBarOptions {

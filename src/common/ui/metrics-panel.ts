@@ -1,4 +1,4 @@
-import { LabMetrics, StepEvent } from '../../types';
+import { LabMetrics, StepEvent } from '@/types';
 import metricsPanelHtml from './metrics_panel.html?raw';
 
 export class MetricsPanel {

@@ -1,4 +1,4 @@
-import { GraphData, GraphNode, GraphEdge, NodeVisualState, EdgeVisualState } from '../../types';
+import { GraphData, GraphNode, GraphEdge, NodeVisualState, EdgeVisualState } from '@/types';
 
 export type NeighborSortingStrategy = 'ascending-id' | 'descending-id' | 'clockwise' | 'custom';
 

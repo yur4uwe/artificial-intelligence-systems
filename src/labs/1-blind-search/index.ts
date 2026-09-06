@@ -1,20 +1,20 @@
-import { LabModule, LabMetrics, StepEvent } from '../../types';
+import { LabModule, LabMetrics, StepEvent } from '@/types';
 import {
     GraphModel,
     NeighborSortingStrategy,
     TREE_CONSTRAINTS,
     UNDIRECTED_GRAPH_CONSTRAINTS,
     DIRECTED_GRAPH_CONSTRAINTS
-} from '../../common/graph/graph-model';
-import { CanvasRenderer, ContextMenuEvent as ContextMenuDrawEvent } from '../../common/graph/canvas-renderer';
-import { SearchRunner } from '../../common/engine/search-runner';
-import { PlaybackBar } from '../../common/ui/playback-bar';
-import { MetricsPanel } from '../../common/ui/metrics-panel';
+} from '@common/graph/graph-model';
+import { CanvasRenderer, ContextMenuEvent as ContextMenuDrawEvent } from '@common/graph/canvas-renderer';
+import { SearchRunner } from '@common/engine/search-runner';
+import { PlaybackBar } from '@common/ui/playback-bar';
+import { MetricsPanel } from '@common/ui/metrics-panel';
 import { Lab1UI } from './lab1-ui';
 import { createTreePreset, createUndirectedPreset, createDirectedPreset } from './presets';
 import { runBFS } from './bfs';
-import { exportMetricsToCSV } from '../../common/graph/export-utils';
-import { ContextMenu, ContextMenuItem } from '../../common/ui/context-menu';
+import { exportMetricsToCSV } from '@common/graph/export-utils';
+import { ContextMenu, ContextMenuItem } from '@common/ui/context-menu';
 import blindSearchHtml from './blind-search.html?raw';
 
 

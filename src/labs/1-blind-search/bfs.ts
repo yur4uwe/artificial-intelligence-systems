@@ -1,5 +1,5 @@
-import { StepEvent, LabMetrics } from '../../types';
-import { GraphModel, NeighborSortingStrategy } from '../../common/graph/graph-model';
+import { StepEvent, LabMetrics } from '@/types';
+import { GraphModel, NeighborSortingStrategy } from '@common/graph/graph-model';
 
 export interface BFSOptions {
     model: GraphModel;
@@ -98,29 +98,30 @@ export function* runBFS(options: BFSOptions): Generator<StepEvent, LabMetrics, u
                 actionDescription: `Розкриття v${currentId} (цикл #${cycleCounter}). Вершина не має нових суміжних вершин.`,
                 status: 'running',
             };
-        } else {
-            for (const neighborId of unvisitedNeighbors) {
-                visited.add(neighborId);
-                visitedOrder.push(neighborId);
-                parentMap.set(neighborId, currentId);
-                queue.push(neighborId);
+            continue;
+        }
 
-                yield {
-                    stepIndex: ++stepCounter,
-                    currentNodeId: currentId,
-                    activeEdge: { from: currentId, to: neighborId },
-                    queue: [...queue],
-                    visited: Array.from(visited),
-                    openedCount: openedCounter,
-                    cycleCount: cycleCounter,
-                    actionDescription: `Цикл #${cycleCounter} (v${currentId}): перехід по дузі v${currentId} -> v${neighborId}. Додавання v${neighborId} до черги FIFO.`,
-                    status: 'running',
-                };
+        for (const neighborId of unvisitedNeighbors) {
+            visited.add(neighborId);
+            visitedOrder.push(neighborId);
+            parentMap.set(neighborId, currentId);
+            queue.push(neighborId);
 
-                if (neighborId === goalId) {
-                    isGoalFound = true;
-                    break;
-                }
+            yield {
+                stepIndex: ++stepCounter,
+                currentNodeId: currentId,
+                activeEdge: { from: currentId, to: neighborId },
+                queue: [...queue],
+                visited: Array.from(visited),
+                openedCount: openedCounter,
+                cycleCount: cycleCounter,
+                actionDescription: `Цикл #${cycleCounter} (v${currentId}): перехід по дузі v${currentId} -> v${neighborId}. Додавання v${neighborId} до черги`,
+                status: 'running',
+            };
+
+            if (neighborId === goalId) {
+                isGoalFound = true;
+                break;
             }
         }
 

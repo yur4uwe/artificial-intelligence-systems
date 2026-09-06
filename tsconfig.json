@@ -13,7 +13,13 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+        "@/*": ["src/*"],
+        "@common/*": ["src/common/*"],
+        "@labs/*": ["src/labs/*"]
+    }
   },
   "include": ["src"]
 }
