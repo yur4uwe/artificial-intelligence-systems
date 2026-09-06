@@ -49,18 +49,6 @@ export function* runBFS(options: BFSOptions): Generator<StepEvent, LabMetrics, u
     const parentMap = new Map<number, number>();
     const visitedOrder: number[] = [startId];
 
-    // Initial Step
-    yield {
-        stepIndex: ++stepCounter,
-        currentNodeId: startId,
-        queue: [...queue],
-        visited: Array.from(visited),
-        openedCount: 0,
-        cycleCount: 0,
-        actionDescription: `Ініціалізація пошуку. Додавання початкової вершини v${startId} до черги FIFO.`,
-        status: 'running',
-    };
-
     // Check if start is already goal
     if (startId === goalId) {
         const duration = performance.now() - startTime;
@@ -95,22 +83,23 @@ export function* runBFS(options: BFSOptions): Generator<StepEvent, LabMetrics, u
         const currentId = queue.shift()!;
         openedCounter++;
 
-        yield {
-            stepIndex: ++stepCounter,
-            currentNodeId: currentId,
-            queue: [...queue],
-            visited: Array.from(visited),
-            openedCount: openedCounter,
-            cycleCount: cycleCounter,
-            actionDescription: `Розкриття вершини v${currentId} (цикл #${cycleCounter}, розкрито ${openedCounter}). Отримання списку суміжних вершин.`,
-            status: 'running',
-        };
-
         // Get sorted neighbors according to selected lab strategy
         const neighbors = model.getNeighbors(currentId, sortingStrategy);
+        const unvisitedNeighbors = neighbors.filter(n => !visited.has(n));
 
-        for (const neighborId of neighbors) {
-            if (!visited.has(neighborId)) {
+        if (unvisitedNeighbors.length === 0) {
+            yield {
+                stepIndex: ++stepCounter,
+                currentNodeId: currentId,
+                queue: [...queue],
+                visited: Array.from(visited),
+                openedCount: openedCounter,
+                cycleCount: cycleCounter,
+                actionDescription: `Розкриття v${currentId} (цикл #${cycleCounter}). Вершина не має нових суміжних вершин.`,
+                status: 'running',
+            };
+        } else {
+            for (const neighborId of unvisitedNeighbors) {
                 visited.add(neighborId);
                 visitedOrder.push(neighborId);
                 parentMap.set(neighborId, currentId);
@@ -124,7 +113,7 @@ export function* runBFS(options: BFSOptions): Generator<StepEvent, LabMetrics, u
                     visited: Array.from(visited),
                     openedCount: openedCounter,
                     cycleCount: cycleCounter,
-                    actionDescription: `Перехід по дузі v${currentId} → v${neighborId}. Додавання v${neighborId} до черги FIFO.`,
+                    actionDescription: `Цикл #${cycleCounter} (v${currentId}): перехід по дузі v${currentId} -> v${neighborId}. Додавання v${neighborId} до черги FIFO.`,
                     status: 'running',
                 };
 

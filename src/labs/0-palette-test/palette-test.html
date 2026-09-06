@@ -2,22 +2,7 @@
   
   <!-- Top Toolbar: Preset Switcher & Quick Navigation -->
   <header class="h-14 border-b backdrop-blur px-5 flex items-center justify-between shrink-0 z-20" style="background-color: var(--color-bg-header); border-color: var(--color-border-subtle);">
-    <div class="flex items-center gap-3">
-      <div class="w-8 h-8 rounded-lg flex items-center justify-center text-sm shadow-md" style="background-color: var(--color-accent-primary); box-shadow: 0 0 14px var(--color-accent-primary-glow);">
-        🎨
-      </div>
-      <div>
-        <div class="flex items-center gap-2">
-          <h2 class="text-sm font-bold" style="color: var(--color-text-primary);">UI & Shell Palette Design Specimen</h2>
-          <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold" style="background-color: var(--color-bg-elevated); color: var(--color-accent-primary); border: 1px solid var(--color-border-muted);">
-            Design System
-          </span>
-        </div>
-        <p class="text-[11px]" style="color: var(--color-text-muted);">Тестування UI палітри для Header, Main Container, поверхонь та елементів</p>
-      </div>
-    </div>
-
-    <!-- Center Preset Selector -->
+    <!-- Preset Selector -->
     <div class="flex items-center gap-2">
       <span class="text-xs font-medium" style="color: var(--color-text-secondary);">Вибрати палітру:</span>
       <select id="pt-preset-select" class="rounded-lg px-3 py-1.5 text-xs font-medium outline-none cursor-pointer border shadow-sm" style="background-color: var(--color-bg-surface); border-color: var(--color-border-muted); color: var(--color-text-primary);">
@@ -144,12 +129,12 @@
         <div class="h-44 rounded-xl border overflow-hidden flex shadow-inner relative" style="background-color: var(--color-bg-app); border-color: var(--color-border-subtle);">
           
           <!-- Left: Viewport Canvas area -->
-          <div class="flex-1 flex flex-col justify-between p-4 relative sketch-grid-bg">
+          <div class="flex-1 flex flex-col justify-between p-4 relative" style="background-color: var(--color-graph-bg);">
             <div class="flex items-center justify-between">
               <span id="pt-viewport-label" class="px-2 py-0.5 rounded text-[11px] font-mono font-medium border" style="background-color: var(--color-bg-surface); border-color: var(--color-border-muted); color: var(--color-text-secondary);">
                 Canvas Viewport Area (bgApp)
               </span>
-              <span class="text-[11px] font-mono" style="color: var(--color-text-muted);">Zoom: 100% • Grid: Active</span>
+              <span class="text-[11px] font-mono" style="color: var(--color-text-muted);">Zoom: 100%</span>
             </div>
 
             <!-- Floating Playback Mockup inside Viewport -->

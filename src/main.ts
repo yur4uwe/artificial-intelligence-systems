@@ -86,7 +86,7 @@ class App {
             this.container.innerHTML = `
         <div class="flex-1 flex flex-col items-center justify-center p-8 text-center text-rose-400">
           <p class="font-semibold mb-2">Помилка завантаження модуля лабораторної</p>
-          <p class="text-xs font-mono text-slate-400">${String(err)}</p>
+          <p class="text-xs font-mono" style="color: var(--color-text-muted);">${String(err)}</p>
         </div>
       `;
         } finally {

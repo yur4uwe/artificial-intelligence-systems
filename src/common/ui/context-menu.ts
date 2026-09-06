@@ -15,11 +15,7 @@ export class ContextMenu {
 
     constructor() {
         this.element = document.createElement('div');
-        this.element.className = [
-            'fixed z-50 min-w-[200px] py-1 px-1',
-            'bg-slate-900/95 border border-slate-800 rounded-xl shadow-2xl backdrop-blur-md',
-            'text-xs text-slate-200 hidden select-none',
-        ].join(' ');
+        this.element.className = 'fixed z-50 min-w-[200px] py-1.5 px-1.5 rounded-xl backdrop-blur-md text-xs hidden select-none context-menu-panel';
 
         document.body.appendChild(this.element);
 
@@ -66,21 +62,14 @@ export class ContextMenu {
         items.forEach((item) => {
             if (item.divider) {
                 const divider = document.createElement('div');
-                divider.className = 'my-1 border-t border-slate-800/80';
+                divider.className = 'my-1 context-menu-divider';
                 this.element.appendChild(divider);
             }
 
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.disabled = !!item.disabled;
-            btn.className = [
-                'w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left font-medium transition cursor-pointer',
-                item.disabled
-                    ? 'opacity-40 cursor-not-allowed text-slate-500'
-                    : item.danger
-                        ? 'text-rose-400 hover:bg-rose-500/15 hover:text-rose-300'
-                        : 'text-slate-200 hover:bg-slate-800 hover:text-slate-100',
-            ].join(' ');
+            btn.className = `w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left font-medium cursor-pointer context-menu-item${item.danger ? ' danger' : ''}`;
 
             btn.innerHTML = `<span class="flex-1">${item.label}</span>`;
 

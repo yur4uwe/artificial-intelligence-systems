@@ -366,19 +366,39 @@ export default class BlindSearchLab implements LabModule {
     }
 
     private switchSidebarTab(tab: 'params' | 'metrics'): void {
-        const btnParams = this.container.querySelector('#tab-btn-params')!;
-        const btnMetrics = this.container.querySelector('#tab-btn-metrics')!;
+        const btnParams = this.container.querySelector('#tab-btn-params') as HTMLElement;
+        const btnMetrics = this.container.querySelector('#tab-btn-metrics') as HTMLElement;
         const panelParams = this.container.querySelector('#l1-params-panel')!;
         const panelMetrics = this.container.querySelector('#l1-metrics-panel')!;
 
         if (tab === 'params') {
-            btnParams.className = 'flex-1 py-1.5 rounded-lg font-medium bg-slate-800 text-slate-100 text-center transition shadow-sm';
-            btnMetrics.className = 'flex-1 py-1.5 rounded-lg font-medium text-slate-400 hover:text-slate-200 text-center transition';
+            btnParams.style.backgroundColor = 'var(--color-bg-surface)';
+            btnParams.style.color = 'var(--color-text-primary)';
+            btnParams.style.borderColor = 'var(--color-border-muted)';
+            btnParams.classList.add('font-semibold');
+            btnParams.classList.remove('font-medium');
+
+            btnMetrics.style.backgroundColor = 'transparent';
+            btnMetrics.style.color = 'var(--color-text-secondary)';
+            btnMetrics.style.borderColor = 'transparent';
+            btnMetrics.classList.add('font-medium');
+            btnMetrics.classList.remove('font-semibold');
+
             panelParams.classList.remove('hidden');
             panelMetrics.classList.add('hidden');
         } else {
-            btnMetrics.className = 'flex-1 py-1.5 rounded-lg font-medium bg-slate-800 text-slate-100 text-center transition shadow-sm';
-            btnParams.className = 'flex-1 py-1.5 rounded-lg font-medium text-slate-400 hover:text-slate-200 text-center transition';
+            btnMetrics.style.backgroundColor = 'var(--color-bg-surface)';
+            btnMetrics.style.color = 'var(--color-text-primary)';
+            btnMetrics.style.borderColor = 'var(--color-border-muted)';
+            btnMetrics.classList.add('font-semibold');
+            btnMetrics.classList.remove('font-medium');
+
+            btnParams.style.backgroundColor = 'transparent';
+            btnParams.style.color = 'var(--color-text-secondary)';
+            btnParams.style.borderColor = 'transparent';
+            btnParams.classList.add('font-medium');
+            btnParams.classList.remove('font-semibold');
+
             panelMetrics.classList.remove('hidden');
             panelParams.classList.add('hidden');
         }

@@ -364,8 +364,6 @@ export class CanvasRenderer {
         ctx.fillStyle = theme.graph.background;
         ctx.fillRect(0, 0, this.canvas.clientWidth, this.canvas.clientHeight);
 
-        this.drawBackgroundGrid(ctx, theme);
-
         // Apply viewport transform (pan & zoom)
         ctx.save();
         ctx.translate(this.pan.x, this.pan.y);
@@ -393,29 +391,6 @@ export class CanvasRenderer {
 
         ctx.restore();
         ctx.restore();
-    }
-
-    private drawBackgroundGrid(ctx: CanvasRenderingContext2D, theme: ThemePalette): void {
-        const clientW = this.canvas.clientWidth;
-        const clientH = this.canvas.clientHeight;
-        const gridSize = 32 * this.zoom;
-
-        const offsetX = this.pan.x % gridSize;
-        const offsetY = this.pan.y % gridSize;
-
-        ctx.strokeStyle = theme.graph.grid;
-        ctx.lineWidth = 1;
-
-        ctx.beginPath();
-        for (let x = offsetX; x < clientW; x += gridSize) {
-            ctx.moveTo(x, 0);
-            ctx.lineTo(x, clientH);
-        }
-        for (let y = offsetY; y < clientH; y += gridSize) {
-            ctx.moveTo(0, y);
-            ctx.lineTo(clientW, y);
-        }
-        ctx.stroke();
     }
 
     private drawEdges(ctx: CanvasRenderingContext2D, theme: ThemePalette): void {

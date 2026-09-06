@@ -1,0 +1,42 @@
+<div class="flex flex-wrap items-center justify-between gap-3 rounded-xl p-3 shadow-lg backdrop-blur border" style="background-color: var(--color-bg-surface); border-color: var(--color-border-subtle);">
+  <!-- Playback Buttons -->
+  <div class="flex items-center gap-1.5">
+    <button id="pb-btn-play" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-medium text-xs active:scale-95 cursor-pointer btn-palette-primary">
+      <span>Запуск</span>
+    </button>
+    
+    <button id="pb-btn-pause" class="hidden items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-medium text-xs active:scale-95 cursor-pointer btn-palette-warning">
+      <span>Пауза</span>
+    </button>
+
+    <button id="pb-btn-step" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-medium text-xs active:scale-95 cursor-pointer btn-palette-elevated">
+      <span>Покроково</span>
+    </button>
+
+    <button id="pb-btn-instant" title="Виконати пошук миттєво для отримання метрик" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-medium text-xs active:scale-95 cursor-pointer btn-palette-elevated">
+      <span>Миттєво</span>
+    </button>
+
+    <button id="pb-btn-reset" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-medium text-xs active:scale-95 cursor-pointer btn-palette-danger">
+      <span>Скинути</span>
+    </button>
+  </div>
+
+  <!-- Speed Slider -->
+  <div class="flex items-center gap-2.5 min-w-[200px]">
+    <span class="text-xs font-medium whitespace-nowrap" style="color: var(--color-text-secondary);">Швидкість:</span>
+    <input 
+      type="range" 
+      id="pb-speed-slider" 
+      min="10" 
+      max="1000" 
+      step="10" 
+      value="100" 
+      class="flex-1 cursor-pointer"
+    >
+    <span id="pb-speed-val" class="text-xs font-mono font-semibold w-12 text-right" style="color: var(--color-accent-primary);">
+        100ms
+    </span>
+  </div>
+</div>
+

@@ -6,14 +6,19 @@ export interface SearchRunnerCallbacks {
     onReset: () => void;
 }
 
+export enum RunnerStatus {
+    Zero = 'zero',
+    Running = 'running',
+    Paused = 'paused',
+    Finished = 'finished',
+}
+
 export class SearchRunner {
     private generatorFactory: () => Generator<StepEvent, LabMetrics, unknown>;
     private generator: Generator<StepEvent, LabMetrics, unknown> | null = null;
     private callbacks: SearchRunnerCallbacks;
 
-    private isRunning: boolean = false;
-    private isPaused: boolean = false;
-    private isFinished: boolean = false;
+    private runnerStatus: RunnerStatus = RunnerStatus.Zero;
     private speedMs: number = 250;
     private timerId: number | null = null;
     private history: StepEvent[] = [];
@@ -45,8 +50,13 @@ export class SearchRunner {
     }
 
     public start(): void {
-        if (this.isFinished) {
+        if (this.runnerStatus === RunnerStatus.Finished) {
             this.reset();
+        }
+
+        if (this.timerId !== null) {
+            clearTimeout(this.timerId);
+            this.timerId = null;
         }
 
         if (!this.generator) {
@@ -55,14 +65,12 @@ export class SearchRunner {
             this.currentStepIndex = -1;
         }
 
-        this.isRunning = true;
-        this.isPaused = false;
+        this.runnerStatus = RunnerStatus.Running;
         this.scheduleNextStep();
     }
 
     public pause(): void {
-        this.isRunning = false;
-        this.isPaused = true;
+        this.runnerStatus = RunnerStatus.Paused;
         if (this.timerId !== null) {
             clearTimeout(this.timerId);
             this.timerId = null;
@@ -70,7 +78,9 @@ export class SearchRunner {
     }
 
     public stepForward(): StepEvent | null {
-        if (this.isFinished) return null;
+        if (this.runnerStatus === RunnerStatus.Finished) {
+            this.reset();
+        }
 
         if (!this.generator) {
             this.generator = this.generatorFactory();
@@ -88,8 +98,11 @@ export class SearchRunner {
 
         const next = this.generator.next();
         if (next.done) {
-            this.isFinished = true;
-            this.isRunning = false;
+            this.runnerStatus = RunnerStatus.Finished;
+            if (this.timerId !== null) {
+                clearTimeout(this.timerId);
+                this.timerId = null;
+            }
             return null;
         }
 
@@ -100,9 +113,14 @@ export class SearchRunner {
         this.callbacks.onStep(event);
 
         if (event.status === 'found' || event.status === 'not-found') {
-            this.isFinished = true;
-            this.isRunning = false;
+            this.runnerStatus = RunnerStatus.Finished;
+            if (this.timerId !== null) {
+                clearTimeout(this.timerId);
+                this.timerId = null;
+            }
             this.callbacks.onFinish(event);
+        } else if (this.runnerStatus === RunnerStatus.Zero) {
+            this.runnerStatus = RunnerStatus.Paused;
         }
 
         return event;
@@ -113,9 +131,7 @@ export class SearchRunner {
             clearTimeout(this.timerId);
             this.timerId = null;
         }
-        this.isRunning = false;
-        this.isPaused = false;
-        this.isFinished = false;
+        this.runnerStatus = RunnerStatus.Zero;
         this.generator = null;
         this.history = [];
         this.currentStepIndex = -1;
@@ -135,7 +151,7 @@ export class SearchRunner {
         }
 
         if (lastEvent) {
-            this.isFinished = true;
+            this.runnerStatus = RunnerStatus.Finished;
             this.currentStepIndex = this.history.length - 1;
             this.callbacks.onStep(lastEvent);
             this.callbacks.onFinish(lastEvent);
@@ -145,22 +161,25 @@ export class SearchRunner {
     }
 
     private scheduleNextStep(): void {
-        if (!this.isRunning) return;
+        if (this.runnerStatus !== RunnerStatus.Running) return;
+
+        if (this.timerId !== null) {
+            clearTimeout(this.timerId);
+            this.timerId = null;
+        }
 
         this.timerId = window.setTimeout(() => {
             this.timerId = null;
+            if (this.runnerStatus !== RunnerStatus.Running) return;
+
             const event = this.stepForward();
-            if (event && !this.isFinished && this.isRunning) {
+            if (event && this.runnerStatus === RunnerStatus.Running) {
                 this.scheduleNextStep();
             }
         }, this.speedMs);
     }
 
-    public getStatus(): { isRunning: boolean; isPaused: boolean; isFinished: boolean } {
-        return {
-            isRunning: this.isRunning,
-            isPaused: this.isPaused,
-            isFinished: this.isFinished,
-        };
+    public getStatus(): RunnerStatus {
+        return this.runnerStatus;
     }
 }

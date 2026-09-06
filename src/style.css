@@ -125,17 +125,88 @@ input[type=range]::-moz-range-thumb {
 .theme-bg-accent-hover:hover { background-color: var(--color-accent-primary-hover); }
 
 /* Design Sketch Artboard Utilities */
-.sketch-grid-bg {
-  background-image: 
-    radial-gradient(var(--color-border-muted) 1px, transparent 1px),
-    linear-gradient(to right, var(--color-border-subtle) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--color-border-subtle) 1px, transparent 1px);
-  background-size: 24px 24px, 120px 120px, 120px 120px;
-}
-
 .sketch-ruler-badge {
   font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+
+/* Context Menu Component */
+.context-menu-panel {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-muted);
+  color: var(--color-text-primary);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+}
+
+.context-menu-divider {
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.context-menu-item {
+  color: var(--color-text-primary);
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.context-menu-item:hover:not(:disabled) {
+  background-color: var(--color-bg-elevated);
+}
+
+.context-menu-item.danger {
+  color: #f43f5e;
+}
+
+.context-menu-item.danger:hover:not(:disabled) {
+  background-color: rgba(244, 63, 94, 0.15);
+  color: #fb7185;
+}
+
+.context-menu-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  color: var(--color-text-muted);
+}
+
+/* Palette Interactive Buttons */
+.btn-palette-primary {
+  background-color: var(--color-accent-primary);
+  color: #ffffff;
+  box-shadow: 0 0 10px var(--color-accent-primary-glow);
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+.btn-palette-primary:hover:not(:disabled) {
+  background-color: var(--color-accent-primary-hover);
+}
+
+.btn-palette-elevated {
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-subtle);
+  color: var(--color-text-primary);
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+.btn-palette-elevated:hover:not(:disabled) {
+  background-color: var(--color-bg-surface);
+  border-color: var(--color-border-muted);
+}
+
+.btn-palette-danger {
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-subtle);
+  color: #f43f5e;
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+.btn-palette-danger:hover:not(:disabled) {
+  background-color: rgba(244, 63, 94, 0.12);
+  border-color: rgba(244, 63, 94, 0.3);
+}
+
+.btn-palette-warning {
+  background-color: #f59e0b;
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+.btn-palette-warning:hover:not(:disabled) {
+  background-color: #d97706;
 }

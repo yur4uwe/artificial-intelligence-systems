@@ -25,9 +25,6 @@ export class PaletteSpecimensRenderer {
         ctx.fillStyle = theme.graph.background;
         ctx.fillRect(0, 0, width, height);
 
-        // Subtle background grid
-        this.drawGrid(ctx, width, height, theme.graph.grid, 24);
-
         // Define 10 node specimens
         const specimens = [
             { label: 'v1', name: 'Idle Default', state: 'idle', isHovered: false, isSelected: false },
@@ -97,9 +94,6 @@ export class PaletteSpecimensRenderer {
         // Background
         ctx.fillStyle = theme.graph.background;
         ctx.fillRect(0, 0, width, height);
-
-        // Grid
-        this.drawGrid(ctx, width, height, theme.graph.grid, 24);
 
         const edgeSpecimens = [
             { name: 'Idle Undirected', type: 'idle', isDirected: false },
@@ -212,9 +206,6 @@ export class PaletteSpecimensRenderer {
         // Clear
         ctx.fillStyle = theme.graph.background;
         ctx.fillRect(0, 0, width, height);
-
-        // Grid
-        this.drawGrid(ctx, width, height, theme.graph.grid, 28);
 
         // Nodes coordinates scaled to width
         const scaleX = width / 800;
@@ -331,22 +322,6 @@ export class PaletteSpecimensRenderer {
         });
 
         ctx.restore();
-    }
-
-    // Helper: Draw Background Grid
-    private static drawGrid(ctx: CanvasRenderingContext2D, w: number, h: number, color: string, step: number): void {
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        for (let x = 0; x <= w; x += step) {
-            ctx.moveTo(x, 0);
-            ctx.lineTo(x, h);
-        }
-        for (let y = 0; y <= h; y += step) {
-            ctx.moveTo(0, y);
-            ctx.lineTo(w, y);
-        }
-        ctx.stroke();
     }
 
     // Helper: Draw Arrowhead
