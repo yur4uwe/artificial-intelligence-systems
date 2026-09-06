@@ -1,0 +1,544 @@
+<div class="flex-1 flex flex-col w-full h-full overflow-hidden" style="background-color: var(--color-bg-app); color: var(--color-text-primary);">
+  
+  <!-- Top Toolbar: Preset Switcher & Quick Navigation -->
+  <header class="h-14 border-b backdrop-blur px-5 flex items-center justify-between shrink-0 z-20" style="background-color: var(--color-bg-header); border-color: var(--color-border-subtle);">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg flex items-center justify-center text-sm shadow-md" style="background-color: var(--color-accent-primary); box-shadow: 0 0 14px var(--color-accent-primary-glow);">
+        🎨
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h2 class="text-sm font-bold" style="color: var(--color-text-primary);">UI & Shell Palette Design Specimen</h2>
+          <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold" style="background-color: var(--color-bg-elevated); color: var(--color-accent-primary); border: 1px solid var(--color-border-muted);">
+            Design System
+          </span>
+        </div>
+        <p class="text-[11px]" style="color: var(--color-text-muted);">Тестування UI палітри для Header, Main Container, поверхонь та елементів</p>
+      </div>
+    </div>
+
+    <!-- Center Preset Selector -->
+    <div class="flex items-center gap-2">
+      <span class="text-xs font-medium" style="color: var(--color-text-secondary);">Вибрати палітру:</span>
+      <select id="pt-preset-select" class="rounded-lg px-3 py-1.5 text-xs font-medium outline-none cursor-pointer border shadow-sm" style="background-color: var(--color-bg-surface); border-color: var(--color-border-muted); color: var(--color-text-primary);">
+        <!-- Populated dynamically -->
+      </select>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex items-center gap-2">
+      <button id="pt-btn-copy-json" title="Копіювати JSON поточної палітри" class="px-3 py-1.5 rounded-lg text-xs font-medium border transition flex items-center gap-1.5 active:scale-95" style="background-color: var(--color-bg-surface); border-color: var(--color-border-muted); color: var(--color-text-primary);">
+        <span>📋</span>
+        <span>Копіювати JSON</span>
+      </button>
+      <button id="pt-btn-reset-theme" title="Скинути до стандарту Calm Dark" class="px-3 py-1.5 rounded-lg text-xs font-medium border transition flex items-center gap-1.5 active:scale-95" style="background-color: var(--color-bg-surface); border-color: var(--color-border-muted); color: var(--color-text-secondary);">
+        <span>↺</span>
+        <span>Скинути</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Scrollable Design Sketch Area -->
+  <main class="flex-1 overflow-y-auto p-6 flex flex-col gap-8 relative" style="background-color: var(--color-bg-app);">
+
+    <!-- Section Navigation Bar -->
+    <div class="sticky top-0 z-10 p-2 rounded-xl border flex items-center justify-between shadow-lg backdrop-blur-md" style="background-color: var(--color-bg-header); border-color: var(--color-border-subtle);">
+      <div class="flex items-center gap-1 text-xs">
+        <a href="#artboard-header-main" class="px-3 py-1 rounded-lg font-medium transition flex items-center gap-1.5" style="color: var(--color-text-secondary);">
+          <span class="w-2 h-2 rounded-full" style="background-color: var(--color-accent-primary);"></span>
+          <span>01. Header & Main Layout</span>
+        </a>
+        <a href="#artboard-surfaces" class="px-3 py-1 rounded-lg font-medium transition flex items-center gap-1.5" style="color: var(--color-text-secondary);">
+          <span class="w-2 h-2 rounded-full" style="background-color: #10b981;"></span>
+          <span>02. Рівні Поверхонь</span>
+        </a>
+        <a href="#artboard-ui-atoms" class="px-3 py-1 rounded-lg font-medium transition flex items-center gap-1.5" style="color: var(--color-text-secondary);">
+          <span class="w-2 h-2 rounded-full" style="background-color: #f59e0b;"></span>
+          <span>03. Кнопки & Форми</span>
+        </a>
+        <a href="#artboard-composite" class="px-3 py-1 rounded-lg font-medium transition flex items-center gap-1.5" style="color: var(--color-text-secondary);">
+          <span class="w-2 h-2 rounded-full" style="background-color: #ec4899;"></span>
+          <span>04. Панелі & Віджети</span>
+        </a>
+        <a href="#artboard-graph" class="px-3 py-1 rounded-lg font-medium transition flex items-center gap-1.5" style="color: var(--color-text-secondary);">
+          <span class="w-2 h-2 rounded-full" style="background-color: #38bdf8;"></span>
+          <span>05. Граф & Канвас</span>
+        </a>
+        <a href="#artboard-tokens" class="px-3 py-1 rounded-lg font-medium transition flex items-center gap-1.5" style="color: var(--color-text-secondary);">
+          <span class="w-2 h-2 rounded-full" style="background-color: #a855f7;"></span>
+          <span>06. Матриця Токенів</span>
+        </a>
+      </div>
+
+      <div id="pt-theme-info-pill" class="text-[11px] font-mono px-2.5 py-1 rounded border shadow-sm" style="background-color: var(--color-bg-surface); border-color: var(--color-border-muted); color: var(--color-text-secondary);">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- ARTBOARD 01: APP HEADER & MAIN LAYOUT VIEWPORT SHELL                     -->
+    <!-- ========================================================================= -->
+    <section id="artboard-header-main" class="rounded-2xl p-6 border shadow-xl flex flex-col gap-5" style="background-color: var(--color-bg-surface); border-color: var(--color-border-subtle);">
+      <div class="flex items-center justify-between border-b pb-3" style="border-color: var(--color-border-subtle);">
+        <div class="flex items-center gap-2.5">
+          <span class="sketch-ruler-badge px-2.5 py-0.5 rounded font-mono text-[10px]" style="background-color: var(--color-bg-elevated); color: var(--color-accent-primary); border: 1px solid var(--color-border-muted);">
+            ARTBOARD 01
+          </span>
+          <h3 class="text-sm font-bold" style="color: var(--color-text-primary);">Header & Main Viewport Layout Architecture</h3>
+        </div>
+        <span class="text-[11px] font-mono" style="color: var(--color-text-muted);">bgHeader • bgApp • bgSurface • Navigation Tabs</span>
+      </div>
+
+      <!-- 1. Top App Header Mockup in 3 Tab States -->
+      <div class="flex flex-col gap-2.5">
+        <div class="flex items-center justify-between text-xs">
+          <span class="font-semibold" style="color: var(--color-text-primary);">1. Макет шапки додатку (App Header Specimen) у всіх станах вкладок:</span>
+          <span class="text-[11px]" style="color: var(--color-text-muted);">Active, Inactive та Hovered вкладки</span>
+        </div>
+
+        <!-- Rendered Header Shell -->
+        <div class="rounded-xl border p-3 flex items-center justify-between shadow-md" style="background-color: var(--color-bg-header); border-color: var(--color-border-subtle);">
+          <div class="flex items-center gap-3">
+            <div class="w-6 h-6 rounded-md flex items-center justify-center text-xs text-white" style="background-color: var(--color-accent-primary);">
+              ⚡
+            </div>
+            <span class="text-xs font-semibold" style="color: var(--color-text-primary);">Системи Штучного Інтелекту</span>
+          </div>
+
+          <!-- Navigation Tabs in 3 states -->
+          <nav class="flex items-center p-1 rounded-xl border gap-1" style="background-color: var(--color-bg-app); border-color: var(--color-border-subtle);">
+            <!-- 1. Active Tab -->
+            <div class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 text-white" style="background-color: var(--color-accent-primary); box-shadow: 0 0 15px var(--color-accent-primary-glow);">
+              <span>●</span>
+              <span>Активна вкладка (Active)</span>
+            </div>
+
+            <!-- 2. Hovered Tab -->
+            <div class="px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 cursor-pointer" style="background-color: var(--color-bg-elevated); color: var(--color-text-primary);">
+              <span>Наведена вкладка (Hover)</span>
+            </div>
+
+            <!-- 3. Inactive Tab -->
+            <div class="px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 cursor-pointer" style="color: var(--color-text-secondary);">
+              <span>Неактивна (Idle)</span>
+            </div>
+          </nav>
+
+          <!-- Header Actions -->
+          <div class="flex items-center gap-2">
+            <button class="px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5" style="background-color: var(--color-bg-surface); border-color: var(--color-border-muted); color: var(--color-text-secondary);">
+              <span>📸</span>
+              <span>Знімок</span>
+            </button>
+            <button class="px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5" style="background-color: var(--color-bg-surface); border-color: var(--color-border-muted); color: var(--color-text-secondary);">
+              <span>📊</span>
+              <span>Експорт CSV</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Main Viewport Container Mockup -->
+      <div class="flex flex-col gap-2.5 mt-2">
+        <span class="text-xs font-semibold" style="color: var(--color-text-primary);">2. Головний елемент робочого простору (Main Element Viewport Shell):</span>
+        <div class="h-44 rounded-xl border overflow-hidden flex shadow-inner relative" style="background-color: var(--color-bg-app); border-color: var(--color-border-subtle);">
+          
+          <!-- Left: Viewport Canvas area -->
+          <div class="flex-1 flex flex-col justify-between p-4 relative sketch-grid-bg">
+            <div class="flex items-center justify-between">
+              <span id="pt-viewport-label" class="px-2 py-0.5 rounded text-[11px] font-mono font-medium border" style="background-color: var(--color-bg-surface); border-color: var(--color-border-muted); color: var(--color-text-secondary);">
+                Canvas Viewport Area (bgApp)
+              </span>
+              <span class="text-[11px] font-mono" style="color: var(--color-text-muted);">Zoom: 100% • Grid: Active</span>
+            </div>
+
+            <!-- Floating Playback Mockup inside Viewport -->
+            <div class="self-center px-4 py-2 rounded-xl border shadow-lg flex items-center gap-3 backdrop-blur" style="background-color: var(--color-bg-surface); border-color: var(--color-border-muted);">
+              <button class="px-3 py-1 rounded-lg text-xs font-semibold text-white shadow-md" style="background-color: var(--color-accent-primary); box-shadow: 0 0 10px var(--color-accent-primary-glow);">
+                ▶ Запуск
+              </button>
+              <button class="px-2.5 py-1 rounded-lg text-xs font-medium border" style="background-color: var(--color-bg-elevated); border-color: var(--color-border-subtle); color: var(--color-text-primary);">
+                ⏭ Крок
+              </button>
+              <span class="text-[11px] font-mono font-semibold" style="color: var(--color-accent-primary);">100ms</span>
+            </div>
+          </div>
+
+          <!-- Right: Sidebar container -->
+          <div class="w-64 border-l flex flex-col p-3 gap-2" style="background-color: var(--color-bg-surface); border-color: var(--color-border-subtle);">
+            <div class="flex border-b pb-2 justify-between items-center" style="border-color: var(--color-border-subtle);">
+              <span class="text-xs font-semibold" style="color: var(--color-text-primary);">Sidebar Panel</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded" style="background-color: var(--color-bg-elevated); color: var(--color-text-muted);">bgSurface</span>
+            </div>
+            <div class="rounded-lg p-2.5 border flex flex-col gap-1" style="background-color: var(--color-bg-elevated); border-color: var(--color-border-muted);">
+              <span class="text-[10px] uppercase font-bold" style="color: var(--color-text-muted);">Elevated Card</span>
+              <span class="text-xs font-medium" style="color: var(--color-text-primary);">bgSurfaceElevated</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- ARTBOARD 02: SURFACE ELEVATIONS & CONTAINER HIERARCHY                     -->
+    <!-- ========================================================================= -->
+    <section id="artboard-surfaces" class="rounded-2xl p-6 border shadow-xl flex flex-col gap-5" style="background-color: var(--color-bg-surface); border-color: var(--color-border-subtle);">
+      <div class="flex items-center justify-between border-b pb-3" style="border-color: var(--color-border-subtle);">
+        <div class="flex items-center gap-2.5">
+          <span class="sketch-ruler-badge px-2.5 py-0.5 rounded font-mono text-[10px]" style="background-color: var(--color-bg-elevated); color: #10b981; border: 1px solid var(--color-border-muted);">
+            ARTBOARD 02
+          </span>
+          <h3 class="text-sm font-bold" style="color: var(--color-text-primary);">Surface Elevation Layers & Border Contrasts</h3>
+        </div>
+        <span class="text-[11px] font-mono" style="color: var(--color-text-muted);">4 Depth Levels (0 to 3)</span>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="pt-surfaces-grid">
+        <!-- Rendered dynamically -->
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- ARTBOARD 03: UI CONTROLS, BUTTONS & FORM ATOMS                            -->
+    <!-- ========================================================================= -->
+    <section id="artboard-ui-atoms" class="rounded-2xl p-6 border shadow-xl flex flex-col gap-6" style="background-color: var(--color-bg-surface); border-color: var(--color-border-subtle);">
+      <div class="flex items-center justify-between border-b pb-3" style="border-color: var(--color-border-subtle);">
+        <div class="flex items-center gap-2.5">
+          <span class="sketch-ruler-badge px-2.5 py-0.5 rounded font-mono text-[10px]" style="background-color: var(--color-bg-elevated); color: #f59e0b; border: 1px solid var(--color-border-muted);">
+            ARTBOARD 03
+          </span>
+          <h3 class="text-sm font-bold" style="color: var(--color-text-primary);">Interactive UI Controls, Typography & Form Atoms</h3>
+        </div>
+        <span class="text-[11px] font-mono" style="color: var(--color-text-muted);">Buttons • Inputs • Badges</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        
+        <!-- 1. Typography Scale in Active Palette -->
+        <div class="rounded-xl border p-4 flex flex-col gap-3" style="background-color: var(--color-bg-app); border-color: var(--color-border-subtle);">
+          <span class="text-xs font-semibold border-b pb-1.5 block" style="color: var(--color-text-primary); border-color: var(--color-border-subtle);">
+            Типографіка & Контраст
+          </span>
+          <div class="flex flex-col gap-2.5 text-xs" id="pt-typography-specimen">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <!-- 2. Button System in All States -->
+        <div class="rounded-xl border p-4 flex flex-col gap-3" style="background-color: var(--color-bg-app); border-color: var(--color-border-subtle);">
+          <span class="text-xs font-semibold border-b pb-1.5 block" style="color: var(--color-text-primary); border-color: var(--color-border-subtle);">
+            Кнопки у всіх станах
+          </span>
+          <div class="flex flex-col gap-2">
+            <!-- Primary Normal -->
+            <button class="w-full px-3 py-1.5 rounded-lg text-xs font-semibold text-white shadow-md transition" style="background-color: var(--color-accent-primary); box-shadow: 0 0 12px var(--color-accent-primary-glow);">
+              Primary Default
+            </button>
+            <!-- Primary Hovered -->
+            <button class="w-full px-3 py-1.5 rounded-lg text-xs font-semibold text-white shadow-lg transition" style="background-color: var(--color-accent-primary-hover); box-shadow: 0 0 18px var(--color-accent-primary-glow);">
+              Primary Hovered
+            </button>
+            <!-- Primary Disabled -->
+            <button disabled class="w-full px-3 py-1.5 rounded-lg text-xs font-semibold border opacity-50 cursor-not-allowed" style="background-color: var(--color-bg-elevated); border-color: var(--color-border-subtle); color: var(--color-text-muted);">
+              Primary Disabled
+            </button>
+            <!-- Secondary Button -->
+            <button class="w-full px-3 py-1.5 rounded-lg text-xs font-medium border transition" style="background-color: var(--color-bg-surface); border-color: var(--color-border-muted); color: var(--color-text-primary);">
+              Secondary Outline
+            </button>
+            <!-- Semantic Row -->
+            <div class="grid grid-cols-3 gap-1.5">
+              <button class="px-2 py-1 rounded text-[11px] font-semibold text-white shadow-sm" style="background-color: #10b981;">
+                Success
+              </button>
+              <button class="px-2 py-1 rounded text-[11px] font-semibold text-white shadow-sm" style="background-color: #f59e0b;">
+                Warning
+              </button>
+              <button class="px-2 py-1 rounded text-[11px] font-semibold text-white shadow-sm" style="background-color: #f43f5e;">
+                Danger
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Form Controls in Active Palette -->
+        <div class="rounded-xl border p-4 flex flex-col gap-3" style="background-color: var(--color-bg-app); border-color: var(--color-border-subtle);">
+          <span class="text-xs font-semibold border-b pb-1.5 block" style="color: var(--color-text-primary); border-color: var(--color-border-subtle);">
+            Елементи форм (Inputs)
+          </span>
+          <div class="flex flex-col gap-2.5 text-xs">
+            <div>
+              <span class="text-[10px] block mb-1" style="color: var(--color-text-muted);">Select Dropdown:</span>
+              <select class="w-full border rounded-lg px-2.5 py-1.5 text-xs outline-none" style="background-color: var(--color-bg-surface); border-color: var(--color-border-muted); color: var(--color-text-primary);">
+                <option>1. Дерево (32 вершини)</option>
+              </select>
+            </div>
+            <div>
+              <span class="text-[10px] block mb-1" style="color: var(--color-text-muted);">Text Input (Focus):</span>
+              <input type="text" value="v15 (Active Target)" class="w-full border rounded-lg px-2.5 py-1 text-xs outline-none" style="background-color: var(--color-bg-surface); border-color: var(--color-accent-primary); color: var(--color-text-primary); box-shadow: 0 0 10px var(--color-accent-primary-glow);">
+            </div>
+            <div>
+              <span class="text-[10px] block mb-1" style="color: var(--color-text-muted);">Range Slider:</span>
+              <div class="flex items-center gap-2">
+                <input type="range" min="10" max="1000" value="300" class="flex-1 cursor-pointer">
+                <span class="text-[11px] font-mono font-bold w-12 text-right" style="color: var(--color-accent-primary);">300ms</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Badges, Chips & Alerts -->
+        <div class="rounded-xl border p-4 flex flex-col gap-3" style="background-color: var(--color-bg-app); border-color: var(--color-border-subtle);">
+          <span class="text-xs font-semibold border-b pb-1.5 block" style="color: var(--color-text-primary); border-color: var(--color-border-subtle);">
+            Бейджі, Чіпи & Статуси
+          </span>
+          <div class="flex flex-col gap-2.5">
+            <div class="flex flex-wrap gap-1.5">
+              <span class="px-2 py-0.5 rounded-full font-semibold text-[10px] border" style="background-color: var(--color-bg-elevated); border-color: var(--color-border-muted); color: var(--color-text-secondary);">
+                Очікування
+              </span>
+              <span class="px-2 py-0.5 rounded-full font-semibold text-[10px] border" style="background-color: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.35); color: #fbbf24;">
+                Виконується...
+              </span>
+              <span class="px-2 py-0.5 rounded-full font-semibold text-[10px] border" style="background-color: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.35); color: #34d399;">
+                Ціль досягнуто
+              </span>
+              <span class="px-2 py-0.5 rounded-full font-semibold text-[10px] border" style="background-color: rgba(244, 63, 94, 0.15); border-color: rgba(244, 63, 94, 0.35); color: #fb7185;">
+                Не знайдено
+              </span>
+            </div>
+
+            <span class="text-[10px] mt-1 block" style="color: var(--color-text-muted);">Чіпи черги FIFO:</span>
+            <div class="flex flex-wrap gap-1.5">
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold border" style="background-color: var(--color-bg-surface); border-color: var(--color-border-muted); color: var(--color-accent-primary);">v1</span>
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold border" style="background-color: var(--color-bg-surface); border-color: var(--color-border-muted); color: var(--color-accent-primary);">v2</span>
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold border" style="background-color: var(--color-bg-surface); border-color: var(--color-border-muted); color: var(--color-accent-primary);">v5</span>
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold border" style="background-color: var(--color-bg-surface); border-color: var(--color-border-muted); color: var(--color-accent-primary);">v8</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- ARTBOARD 04: COMPOSITE PANELS & SHELLS                                    -->
+    <!-- ========================================================================= -->
+    <section id="artboard-composite" class="rounded-2xl p-6 border shadow-xl flex flex-col gap-6" style="background-color: var(--color-bg-surface); border-color: var(--color-border-subtle);">
+      <div class="flex items-center justify-between border-b pb-3" style="border-color: var(--color-border-subtle);">
+        <div class="flex items-center gap-2.5">
+          <span class="sketch-ruler-badge px-2.5 py-0.5 rounded font-mono text-[10px]" style="background-color: var(--color-bg-elevated); color: #ec4899; border: 1px solid var(--color-border-muted);">
+            ARTBOARD 04
+          </span>
+          <h3 class="text-sm font-bold" style="color: var(--color-text-primary);">Composite Panels, Playback Controller & Modals</h3>
+        </div>
+        <span class="text-[11px] font-mono" style="color: var(--color-text-muted);">Complex UI Widgets</span>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- 1. Playback Controller Specimen -->
+        <div class="lg:col-span-2 flex flex-col gap-4">
+          <span class="text-xs font-semibold" style="color: var(--color-text-primary);">1. Панель керування відтворенням (Playback Controller):</span>
+          <div class="flex flex-wrap items-center justify-between gap-3 border rounded-xl p-3 shadow-lg" style="background-color: var(--color-bg-header); border-color: var(--color-border-muted);">
+            <div class="flex items-center gap-1.5">
+              <button class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-semibold text-xs text-white shadow-md" style="background-color: var(--color-accent-primary); box-shadow: 0 0 12px var(--color-accent-primary-glow);">
+                <span>▶</span>
+                <span>Запуск</span>
+              </button>
+              <button class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-medium text-xs border" style="background-color: var(--color-bg-surface); border-color: var(--color-border-muted); color: var(--color-text-primary);">
+                <span>⏭</span>
+                <span>Крок</span>
+              </button>
+              <button class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-medium text-xs border" style="background-color: var(--color-bg-surface); border-color: var(--color-border-muted); color: var(--color-text-primary);">
+                <span>⚡</span>
+                <span>Миттєво</span>
+              </button>
+              <button class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-medium text-xs border" style="background-color: var(--color-bg-surface); border-color: var(--color-border-muted); color: #fb7185;">
+                <span>↺</span>
+                <span>Скинути</span>
+              </button>
+            </div>
+            <div class="flex items-center gap-2.5 min-w-[200px]">
+              <span class="text-xs font-medium" style="color: var(--color-text-secondary);">Швидкість:</span>
+              <input type="range" min="10" max="1000" value="100" class="flex-1 cursor-pointer">
+              <span class="text-xs font-mono font-bold w-12 text-right" style="color: var(--color-accent-primary);">100ms</span>
+            </div>
+          </div>
+
+          <!-- 2. Context Menu Specimen (Rendered in-place) -->
+          <span class="text-xs font-semibold mt-2" style="color: var(--color-text-primary);">2. Контекстне меню ПКМ (Context Menu Specimen):</span>
+          <div class="max-w-xs border rounded-xl shadow-2xl p-1.5 text-xs" style="background-color: var(--color-bg-header); border-color: var(--color-border-muted);">
+            <div class="px-2.5 py-1.5 rounded-lg cursor-pointer font-medium flex items-center justify-between" style="color: var(--color-text-primary);">
+              <span>Встановити як Start (S)</span>
+              <span class="text-[10px] font-mono text-emerald-400">●</span>
+            </div>
+            <div class="px-2.5 py-1.5 rounded-lg cursor-pointer font-medium flex items-center justify-between" style="color: var(--color-text-primary);">
+              <span>Встановити як Goal (G)</span>
+              <span class="text-[10px] font-mono text-rose-400">●</span>
+            </div>
+            <div class="px-2.5 py-1.5 rounded-lg cursor-pointer font-medium" style="background-color: var(--color-bg-elevated); color: var(--color-accent-primary);">
+              З'єднати ребром...
+            </div>
+            <div class="my-1 border-t" style="border-color: var(--color-border-subtle);"></div>
+            <div class="px-2.5 py-1.5 rounded-lg cursor-pointer font-medium flex items-center justify-between" style="color: #fb7185;">
+              <span>Видалити вершину</span>
+              <span>🗑️</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Metrics & Trace Log Specimen -->
+        <div class="border rounded-xl p-4 flex flex-col gap-3 text-xs shadow-md" style="background-color: var(--color-bg-app); border-color: var(--color-border-subtle);">
+          <span class="text-xs font-semibold border-b pb-1.5" style="color: var(--color-text-primary); border-color: var(--color-border-subtle);">
+            3. Панель метрик & Trace Log
+          </span>
+          
+          <!-- Status & Path -->
+          <div class="border rounded-lg p-2.5" style="background-color: var(--color-bg-surface); border-color: var(--color-border-muted);">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-[11px]" style="color: var(--color-text-muted);">Статус пошуку:</span>
+              <span class="px-2 py-0.5 rounded-full font-semibold text-[10px] border" style="background-color: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.35); color: #34d399;">
+                Ціль досягнуто
+              </span>
+            </div>
+            <div class="rounded p-2 border font-mono text-xs font-semibold" style="background-color: var(--color-bg-app); border-color: var(--color-border-subtle); color: var(--color-accent-primary);">
+              1 → 2 → 7 → 8 → 9
+            </div>
+          </div>
+
+          <!-- 4 Stats -->
+          <div class="grid grid-cols-2 gap-2">
+            <div class="border rounded-lg p-2" style="background-color: var(--color-bg-surface); border-color: var(--color-border-muted);">
+              <span class="block text-[10px]" style="color: var(--color-text-muted);">Довжина шляху:</span>
+              <span class="text-base font-bold font-mono" style="color: var(--color-text-primary);">4</span>
+              <span class="text-[10px] ml-1" style="color: var(--color-text-muted);">ребра</span>
+            </div>
+            <div class="border rounded-lg p-2" style="background-color: var(--color-bg-surface); border-color: var(--color-border-muted);">
+              <span class="block text-[10px]" style="color: var(--color-text-muted);">Розкрито:</span>
+              <span class="text-base font-bold font-mono text-emerald-400">8</span>
+            </div>
+            <div class="border rounded-lg p-2" style="background-color: var(--color-bg-surface); border-color: var(--color-border-muted);">
+              <span class="block text-[10px]" style="color: var(--color-text-muted);">Цикли:</span>
+              <span class="text-base font-bold font-mono text-amber-400">2</span>
+            </div>
+            <div class="border rounded-lg p-2" style="background-color: var(--color-bg-surface); border-color: var(--color-border-muted);">
+              <span class="block text-[10px]" style="color: var(--color-text-muted);">Час:</span>
+              <span class="text-base font-bold font-mono" style="color: var(--color-accent-primary);">0.42</span>
+              <span class="text-[10px] ml-1" style="color: var(--color-text-muted);">мс</span>
+            </div>
+          </div>
+
+          <!-- Step Trace Log List -->
+          <div class="border rounded-lg p-2 flex flex-col gap-1.5 max-h-36 overflow-y-auto font-mono text-[10px]" style="background-color: var(--color-bg-surface); border-color: var(--color-border-muted);">
+            <div class="p-1.5 rounded border flex items-start gap-1.5" style="background-color: var(--color-bg-app); border-color: var(--color-border-subtle); color: var(--color-text-primary);">
+              <span class="font-bold shrink-0" style="color: var(--color-accent-primary);">#1</span>
+              <span>Ініціалізація BFS: черга [1], розкрито 1</span>
+            </div>
+            <div class="p-1.5 rounded border flex items-start gap-1.5" style="background-color: var(--color-bg-app); border-color: var(--color-border-subtle); color: var(--color-text-primary);">
+              <span class="font-bold shrink-0" style="color: var(--color-accent-primary);">#2</span>
+              <span>Розкриття v1: сусіди [2, 3] додано до FIFO</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- ARTBOARD 05: GRAPH VISUAL SYSTEM & TOPOLOGY                               -->
+    <!-- ========================================================================= -->
+    <section id="artboard-graph" class="rounded-2xl p-6 border shadow-xl flex flex-col gap-5" style="background-color: var(--color-bg-surface); border-color: var(--color-border-subtle);">
+      <div class="flex items-center justify-between border-b pb-3" style="border-color: var(--color-border-subtle);">
+        <div class="flex items-center gap-2.5">
+          <span class="sketch-ruler-badge px-2.5 py-0.5 rounded font-mono text-[10px]" style="background-color: var(--color-bg-elevated); color: #38bdf8; border: 1px solid var(--color-border-muted);">
+            ARTBOARD 05
+          </span>
+          <h3 class="text-sm font-bold" style="color: var(--color-text-primary);">Graph Visual System & Node/Edge States</h3>
+        </div>
+        <span class="text-[11px] font-mono" style="color: var(--color-text-muted);">2D Canvas Renderer</span>
+      </div>
+
+      <!-- 1. Node States Specimen Canvas -->
+      <div class="flex flex-col gap-2">
+        <span class="text-xs font-semibold" style="color: var(--color-text-primary);">1. Стани вершин (Node Visual States):</span>
+        <div class="border rounded-xl overflow-hidden shadow-inner" style="border-color: var(--color-border-muted);">
+          <canvas id="pt-canvas-nodes" class="w-full block" style="height: 180px;"></canvas>
+        </div>
+      </div>
+
+      <!-- 2. Edge States Specimen Canvas -->
+      <div class="flex flex-col gap-2">
+        <span class="text-xs font-semibold" style="color: var(--color-text-primary);">2. Стани ребер (Edge Visual States):</span>
+        <div class="border rounded-xl overflow-hidden shadow-inner" style="border-color: var(--color-border-muted);">
+          <canvas id="pt-canvas-edges" class="w-full block" style="height: 150px;"></canvas>
+        </div>
+      </div>
+
+      <!-- 3. Integrated Mini Network Specimen -->
+      <div class="flex flex-col gap-2">
+        <span class="text-xs font-semibold" style="color: var(--color-text-primary);">3. Інтегрована топологія пошуку в ширину (BFS Topology):</span>
+        <div class="border rounded-xl overflow-hidden shadow-inner" style="border-color: var(--color-border-muted);">
+          <canvas id="pt-canvas-minigraph" class="w-full block" style="height: 300px;"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- ARTBOARD 06: PALETTE COLOR TOKEN MATRIX                                   -->
+    <!-- ========================================================================= -->
+    <section id="artboard-tokens" class="rounded-2xl p-6 border shadow-xl flex flex-col gap-6" style="background-color: var(--color-bg-surface); border-color: var(--color-border-subtle);">
+      <div class="flex items-center justify-between border-b pb-3" style="border-color: var(--color-border-subtle);">
+        <div class="flex items-center gap-2.5">
+          <span class="sketch-ruler-badge px-2.5 py-0.5 rounded font-mono text-[10px]" style="background-color: var(--color-bg-elevated); color: #a855f7; border: 1px solid var(--color-border-muted);">
+            ARTBOARD 06
+          </span>
+          <h3 class="text-sm font-bold" style="color: var(--color-text-primary);">Complete Palette Color Token Matrix</h3>
+        </div>
+        <span class="text-[11px]" style="color: var(--color-text-muted);">Клікніть на 📋 для копіювання HEX значення</span>
+      </div>
+
+      <!-- UI & Surface Tokens -->
+      <div class="flex flex-col gap-2.5">
+        <h4 class="text-xs font-bold flex items-center gap-2" style="color: var(--color-text-primary);">
+          <span>UI Shell, Header & Surface Tokens</span>
+          <span class="text-[10px] font-mono font-normal" style="color: var(--color-text-muted);">(--color-bg-*, --color-border-*, --color-accent-*)</span>
+        </h4>
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5" id="pt-swatches-ui">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Graph Canvas & Edge Tokens -->
+      <div class="flex flex-col gap-2.5">
+        <h4 class="text-xs font-bold flex items-center gap-2" style="color: var(--color-text-primary);">
+          <span>Graph Canvas & Edge Tokens</span>
+          <span class="text-[10px] font-mono font-normal" style="color: var(--color-text-muted);">(graph.background, graph.edges.*)</span>
+        </h4>
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5" id="pt-swatches-graph">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Graph Node State Tokens -->
+      <div class="flex flex-col gap-2.5">
+        <h4 class="text-xs font-bold flex items-center gap-2" style="color: var(--color-text-primary);">
+          <span>Graph Node State Tokens</span>
+          <span class="text-[10px] font-mono font-normal" style="color: var(--color-text-muted);">(nodes.idle, start, goal, current, inQueue, visited, path)</span>
+        </h4>
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2.5" id="pt-swatches-nodes">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Toast Notification Bar -->
+  <div id="pt-toast" class="hidden fixed bottom-5 right-5 z-50 px-4 py-2.5 rounded-xl border text-xs font-medium shadow-2xl flex items-center gap-2 transition-all backdrop-blur" style="background-color: var(--color-bg-header); border-color: var(--color-border-muted); color: var(--color-text-primary);">
+    <span id="pt-toast-icon">✓</span>
+    <span id="pt-toast-msg">Повідомлення</span>
+  </div>
+
+</div>

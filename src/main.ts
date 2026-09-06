@@ -2,7 +2,7 @@ import './style.css';
 import { LABS_REGISTRY } from './labs/registry';
 import { LabModule } from './types';
 import { downloadFile, exportCanvasToPNG } from './common/graph/export-utils';
-import { applyThemeToCss } from './common/theme/palette';
+import { applyThemeToCss, onThemeChange } from './common/theme/palette';
 
 class App {
     private activeLabId: string | null = null;
@@ -22,9 +22,16 @@ class App {
         this.renderTabs();
         this.attachHeaderEvents();
 
+        // Listen to theme changes to keep header and tabs synchronized
+        onThemeChange(() => {
+            this.updateTabStyles();
+        });
+
         // Default load first lab
         if (LABS_REGISTRY.length > 0) {
             this.switchLab(LABS_REGISTRY[0].id);
+        } else {
+            alert('No labs available');
         }
     }
 
@@ -32,14 +39,13 @@ class App {
         this.tabsNav.innerHTML = LABS_REGISTRY.map(lab => `
       <button 
         data-lab-id="${lab.id}" 
-        class="lab-tab-btn px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-2 ${lab.id === this.activeLabId
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25 font-semibold'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-            }"
+        class="lab-tab-btn px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-2"
       >
         <span>${lab.shortTitle}</span>
       </button>
     `).join('');
+
+        this.updateTabStyles();
 
         this.tabsNav.querySelectorAll('.lab-tab-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -89,12 +95,18 @@ class App {
     }
 
     private updateTabStyles(): void {
-        this.tabsNav.querySelectorAll('.lab-tab-btn').forEach(btn => {
+        this.tabsNav.querySelectorAll<HTMLElement>('.lab-tab-btn').forEach(btn => {
             const id = btn.getAttribute('data-lab-id');
             if (id === this.activeLabId) {
-                btn.className = 'lab-tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-2 bg-blue-600 text-white shadow-md shadow-blue-600/25';
+                btn.style.backgroundColor = 'var(--color-accent-primary)';
+                btn.style.color = '#ffffff';
+                btn.style.boxShadow = '0 0 16px var(--color-accent-primary-glow)';
+                btn.style.fontWeight = '600';
             } else {
-                btn.className = 'lab-tab-btn px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-2 text-slate-400 hover:text-slate-200 hover:bg-slate-900';
+                btn.style.backgroundColor = 'transparent';
+                btn.style.color = 'var(--color-text-secondary)';
+                btn.style.boxShadow = 'none';
+                btn.style.fontWeight = '500';
             }
         });
     }

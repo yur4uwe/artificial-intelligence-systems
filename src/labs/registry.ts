@@ -2,6 +2,16 @@ import { LabManifest } from '../types';
 
 export const LABS_REGISTRY: LabManifest[] = [
     {
+        id: '0-palette-test',
+        title: 'Palette Test',
+        shortTitle: 'Palette Test',
+        description: 'Test palette',
+        loader: async () => {
+            const module = await import('./0-palette-test/index');
+            return new module.default();
+        },
+    },
+    {
         id: '1-blind-search',
         title: 'Лабораторна 1: Сліпий пошук на графах (BFS)',
         shortTitle: 'Лаб 1: BFS Пошук',

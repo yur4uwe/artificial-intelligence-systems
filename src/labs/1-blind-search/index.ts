@@ -1,10 +1,10 @@
 import { LabModule, LabMetrics, StepEvent } from '../../types';
-import { 
-    GraphModel, 
-    NeighborSortingStrategy, 
-    TREE_CONSTRAINTS, 
-    UNDIRECTED_GRAPH_CONSTRAINTS, 
-    DIRECTED_GRAPH_CONSTRAINTS 
+import {
+    GraphModel,
+    NeighborSortingStrategy,
+    TREE_CONSTRAINTS,
+    UNDIRECTED_GRAPH_CONSTRAINTS,
+    DIRECTED_GRAPH_CONSTRAINTS
 } from '../../common/graph/graph-model';
 import { CanvasRenderer, ContextMenuEvent as ContextMenuDrawEvent } from '../../common/graph/canvas-renderer';
 import { SearchRunner } from '../../common/engine/search-runner';
@@ -15,6 +15,7 @@ import { createTreePreset, createUndirectedPreset, createDirectedPreset } from '
 import { runBFS } from './bfs';
 import { exportMetricsToCSV } from '../../common/graph/export-utils';
 import { ContextMenu, ContextMenuItem } from '../../common/ui/context-menu';
+import blindSearchHtml from './blind-search.html?raw';
 
 
 export default class BlindSearchLab implements LabModule {
@@ -28,6 +29,7 @@ export default class BlindSearchLab implements LabModule {
     private metricsPanel!: MetricsPanel;
     private contextMenu!: ContextMenu;
     private labUI!: Lab1UI;
+    private resizeObserver!: ResizeObserver;
 
     private startId: number = 1;
     private goalId: number = 31;
@@ -37,36 +39,7 @@ export default class BlindSearchLab implements LabModule {
 
     public async mount(container: HTMLElement): Promise<void> {
         this.container = container;
-        this.container.innerHTML = `
-      <div class="flex-1 flex overflow-hidden w-full h-full">
-        <!-- Canvas Area & Floating Playback Bar -->
-        <div class="flex-1 flex flex-col relative bg-slate-950 overflow-hidden">
-          <canvas id="l1-canvas" class="w-full h-full block touch-none cursor-crosshair"></canvas>
-
-          <!-- Floating Bottom Playback Controller -->
-          <div class="absolute bottom-4 left-4 right-4 max-w-2xl mx-auto z-20" id="l1-playback-container"></div>
-        </div>
-
-        <!-- Right Control & Metrics Sidebar -->
-        <aside class="w-96 border-l border-slate-800 bg-slate-950 flex flex-col h-full z-10 shrink-0">
-          <!-- Sidebar Header / Tabs -->
-          <div class="flex border-b border-slate-800 bg-slate-900/50 p-1 shrink-0 text-xs">
-            <button id="tab-btn-params" class="flex-1 py-1.5 rounded-lg font-medium bg-slate-800 text-slate-100 text-center transition">
-              Параметри
-            </button>
-            <button id="tab-btn-metrics" class="flex-1 py-1.5 rounded-lg font-medium text-slate-400 hover:text-slate-200 text-center transition">
-              Результати
-            </button>
-          </div>
-
-          <!-- Sidebar Panels -->
-          <div class="flex-1 overflow-y-auto p-3">
-            <div id="l1-params-panel" class="flex flex-col gap-3"></div>
-            <div id="l1-metrics-panel" class="hidden flex flex-col gap-3"></div>
-          </div>
-        </aside>
-      </div>
-    `;
+        this.container.innerHTML = blindSearchHtml;
 
         // 1. Initialize Graph Model with Tree constraints by default
         this.model = new GraphModel(createTreePreset(), TREE_CONSTRAINTS);
@@ -79,6 +52,11 @@ export default class BlindSearchLab implements LabModule {
             onSelectionChange: () => { },
             onContextMenu: (e) => this.handleContextMenu(e),
         });
+
+        this.resizeObserver = new ResizeObserver(() => {
+            this.renderer.resize();
+        });
+        this.resizeObserver.observe(this.container);
 
         // 3. Initialize Search Runner Engine
         this.runner = new SearchRunner(

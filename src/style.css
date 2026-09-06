@@ -109,3 +109,33 @@ input[type=range]::-moz-range-thumb {
 .tooltip-trigger {
   position: relative;
 }
+
+/* Dynamic Theme Utilities */
+.theme-bg-app { background-color: var(--color-bg-app); }
+.theme-bg-surface { background-color: var(--color-bg-surface); }
+.theme-bg-elevated { background-color: var(--color-bg-elevated); }
+.theme-bg-header { background-color: var(--color-bg-header); }
+.theme-border-subtle { border-color: var(--color-border-subtle); }
+.theme-border-muted { border-color: var(--color-border-muted); }
+.theme-text-primary { color: var(--color-text-primary); }
+.theme-text-secondary { color: var(--color-text-secondary); }
+.theme-text-muted { color: var(--color-text-muted); }
+.theme-text-accent { color: var(--color-accent-primary); }
+.theme-bg-accent { background-color: var(--color-accent-primary); }
+.theme-bg-accent-hover:hover { background-color: var(--color-accent-primary-hover); }
+
+/* Design Sketch Artboard Utilities */
+.sketch-grid-bg {
+  background-image: 
+    radial-gradient(var(--color-border-muted) 1px, transparent 1px),
+    linear-gradient(to right, var(--color-border-subtle) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-border-subtle) 1px, transparent 1px);
+  background-size: 24px 24px, 120px 120px, 120px 120px;
+}
+
+.sketch-ruler-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
