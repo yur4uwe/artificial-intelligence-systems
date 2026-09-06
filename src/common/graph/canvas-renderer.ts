@@ -1,7 +1,9 @@
-import { GraphNode } from '@/types';
+import { GraphEdge, GraphNode } from '@/types';
 import { GraphModel } from './graph-model';
 import { getActiveTheme, onThemeChange, ThemePalette } from '@common/theme/palette';
 import { createNodeDrawer, createEdgeDrawer } from './render-primitives';
+
+const TOLERANCE = 8;
 
 export type CanvasInteractionMode =
     | 'select'
@@ -12,12 +14,17 @@ export type CanvasInteractionMode =
     | 'set-goal'
     | 'delete';
 
+export type ContextMenuTarget =
+    | { type: 'node'; nodeId: number }
+    | { type: 'edge'; edgeId: string }
+    | { type: 'canvas' };
+
 export interface ContextMenuEvent {
     clientX: number;
     clientY: number;
     worldX: number;
     worldY: number;
-    targetNodeId: number | null;
+    target: ContextMenuTarget;
 }
 
 export interface CanvasCallbacks {
@@ -38,7 +45,7 @@ export class CanvasRenderer {
     // Interaction & Viewport State
     private mode: CanvasInteractionMode = 'select';
     private hoveredNodeId: number | null = null;
-    // private hoveredEdgeId: string | null = null;
+    private hoveredEdgeId: string | null = null;
     private selectedNodeId: number | null = null;
     private edgeSourceNodeId: number | null = null;
 
@@ -170,6 +177,47 @@ export class CanvasRenderer {
         return null;
     }
 
+    private findEdgeAt(worldX: number, worldY: number): GraphEdge | null {
+        const edges = this.model.getEdges();
+
+        // Iterate backwards so top-most/latest rendered edges are hit first
+        for (let i = edges.length - 1; i >= 0; i--) {
+            const edge = edges[i];
+            const from = this.model.getNode(edge.from);
+            const to = this.model.getNode(edge.to);
+
+            if (!from || !to) continue;
+
+            const dx = to.x - from.x;
+            const dy = to.y - from.y;
+            const lengthSq = dx * dx + dy * dy;
+
+            let projX: number;
+            let projY: number;
+
+            if (lengthSq === 0) {
+                // Degenerate segment (endpoints overlap)
+                projX = from.x;
+                projY = from.y;
+            } else {
+                // Calculate normalized projection of point onto segment AB
+                const t = ((worldX - from.x) * dx + (worldY - from.y) * dy) / lengthSq
+                const normT = Math.max(0, Math.min(1, t));
+
+                // Closest point on the segment
+                projX = from.x + normT * dx;
+                projY = from.y + normT * dy;
+            }
+
+            const dist = Math.hypot(worldX - projX, worldY - projY);
+            if (dist <= TOLERANCE) {
+                return edge;
+            }
+
+        }
+        return null;
+    }
+
     private attachEventListeners(): void {
         const el = this.canvas;
 
@@ -204,14 +252,28 @@ export class CanvasRenderer {
         const screenX = e.clientX - rect.left;
         const screenY = e.clientY - rect.top;
         const world = this.screenToWorld(screenX, screenY);
+
         const clickedNode = this.findNodeAt(world.x, world.y);
+
+        const clickedEdge = !clickedNode ? this.findEdgeAt(world.x, world.y) : null;
+
+        let target: ContextMenuTarget;
+        if (clickedNode) {
+            target = { type: 'node', nodeId: clickedNode.id };
+        } else if (clickedEdge) {
+            target = { type: 'edge', edgeId: clickedEdge.id };
+        } else {
+            target = { type: 'canvas' };
+        }
+
         this.callbacks.onContextMenu({
             clientX: e.clientX,
             clientY: e.clientY,
             worldX: Math.round(world.x),
             worldY: Math.round(world.y),
-            targetNodeId: clickedNode ? clickedNode.id : null
-        })
+            target,
+        });
+
     }
 
     private onPointerDown = (e: PointerEvent): void => {
@@ -319,12 +381,19 @@ export class CanvasRenderer {
             return;
         }
 
+        const prevHoveredEdge = this.hoveredEdgeId;
+        const edge = this.findEdgeAt(world.x, world.y);
+        this.hoveredEdgeId = edge ? edge.id : null;
+
         // Hover detection
         const prevHovered = this.hoveredNodeId;
         const node = this.findNodeAt(world.x, world.y);
         this.hoveredNodeId = node ? node.id : null;
 
-        if (prevHovered !== this.hoveredNodeId) {
+        if (
+            prevHovered !== this.hoveredNodeId ||
+            prevHoveredEdge !== this.hoveredEdgeId
+        ) {
             this.requestRender();
         }
     };

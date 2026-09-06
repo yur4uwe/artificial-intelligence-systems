@@ -195,64 +195,83 @@ export default class BlindSearchLab implements LabModule {
     }
 
     private handleContextMenu(e: ContextMenuDrawEvent): void {
-        const targetNodeId = e.targetNodeId;
         let menuOptions = [] as ContextMenuItem[];
-        if (targetNodeId) {
-            menuOptions = [
-                {
-                    label: 'Встановити як Start',
-                    action: () => this.setStartNode(targetNodeId),
-                },
-                {
-                    label: 'Встановити як Goal',
-                    action: () => this.setGoalNode(targetNodeId),
-                },
-                {
-                    label: "З'єднати ребром",
-                    divider: true,
-                    action: () => {
-                        switch (this.activePreset) {
-                            case 'tree':
-                            case 'undirected':
-                                this.renderer.setMode('add-edge-undirected');
-                                break;
-                            case 'directed':
-                                this.renderer.setMode('add-edge-directed');
-                                break;
+        switch (e.target.type) {
+            case 'node':
+                const targetNodeId = e.target.nodeId;
+                menuOptions = [
+                    {
+                        label: 'Встановити як Start',
+                        action: () => this.setStartNode(targetNodeId),
+                    },
+                    {
+                        label: 'Встановити як Goal',
+                        action: () => this.setGoalNode(targetNodeId),
+                    },
+                    {
+                        label: "З'єднати ребром",
+                        divider: true,
+                        action: () => {
+                            switch (this.activePreset) {
+                                case 'tree':
+                                case 'undirected':
+                                    this.renderer.setMode('add-edge-undirected');
+                                    break;
+                                case 'directed':
+                                    this.renderer.setMode('add-edge-directed');
+                                    break;
+                            }
+                            this.renderer.setEdgeSource(targetNodeId);
                         }
-                        this.renderer.setEdgeSource(targetNodeId);
+                    },
+                    {
+                        label: 'Видалити вершину',
+                        danger: true,
+                        divider: true,
+                        action: () => {
+                            this.model.removeNode(targetNodeId);
+                            this.handleCanvasChange();
+                        },
+                    },
+                ]
+                break;
+            case 'edge':
+                const targetEdgeId = e.target.edgeId;
+                menuOptions = [
+                    {
+                        label: 'Видалити ребро',
+                        danger: true,
+                        action: () => {
+                            this.model.removeEdge(targetEdgeId);
+                            this.handleCanvasChange();
+                        },
+                    },
+                ]
+                break;
+            case 'canvas':
+                menuOptions = [
+                    {
+                        label: 'Додати вершину тут',
+                        action: () => {
+                            this.model.addNode(e.worldX, e.worldY);
+                            this.handleCanvasChange();
+                        },
+                    },
+                    {
+                        label: 'Показати весь граф',
+                        divider: true,
+                        action: () => this.renderer.zoomToFit(),
+                    },
+                    {
+                        label: 'Скинути масштаб (1:1)',
+                        action: () => this.renderer.resetView(),
                     }
-                },
-                {
-                    label: 'Видалити вершину',
-                    danger: true,
-                    divider: true,
-                    action: () => {
-                        this.model.removeNode(targetNodeId);
-                        this.handleCanvasChange();
-                    },
-                },
-            ]
-        } else {
-            menuOptions = [
-                {
-                    label: 'Додати вершину тут',
-                    action: () => {
-                        this.model.addNode(e.worldX, e.worldY);
-                        this.handleCanvasChange();
-                    },
-                },
-                {
-                    label: 'Показати весь граф',
-                    divider: true,
-                    action: () => this.renderer.zoomToFit(),
-                },
-                {
-                    label: 'Скинути масштаб (1:1)',
-                    action: () => this.renderer.resetView(),
-                }
-            ]
-
+                ]
+                break;
+            default:
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const _exhaustiveCheck: never = e.target;
+                return;
         }
         this.contextMenu.show(e.clientX, e.clientY, menuOptions);
     }
