@@ -68,7 +68,7 @@ export default class BlindSearchLab implements LabModule {
             }),
             {
                 onStep: (event) => this.handleStep(event),
-                onFinish: (event) => this.handleFinish(event),
+                onFinish: (event, metrics) => this.handleFinish(event, metrics),
                 onReset: () => this.handleReset(),
             }
         );
@@ -362,8 +362,12 @@ export default class BlindSearchLab implements LabModule {
         this.metricsPanel.updateStep(event);
     }
 
-    private handleFinish(_event: StepEvent): void {
+    private handleFinish(_event: StepEvent, metrics?: LabMetrics | null): void {
         this.playbackBar.updateButtons();
+        if (metrics) {
+            this.lastMetrics = metrics;
+            this.metricsPanel.setFinalMetrics(metrics);
+        }
         // Auto switch to Results tab on finish
         this.switchSidebarTab('metrics');
     }

@@ -2,7 +2,7 @@ import { LabMetrics, StepEvent } from '@/types';
 
 export interface SearchRunnerCallbacks {
     onStep: (event: StepEvent) => void;
-    onFinish: (lastEvent: StepEvent) => void;
+    onFinish: (lastEvent: StepEvent, metrics?: LabMetrics | null) => void;
     onReset: () => void;
 }
 
@@ -118,7 +118,9 @@ export class SearchRunner {
                 clearTimeout(this.timerId);
                 this.timerId = null;
             }
-            this.callbacks.onFinish(event);
+            const returnResult = this.generator.next();
+            const metrics: LabMetrics | null = returnResult.done ? (returnResult.value as LabMetrics) : null;
+            this.callbacks.onFinish(event, metrics);
         } else if (this.runnerStatus === RunnerStatus.Zero) {
             this.runnerStatus = RunnerStatus.Paused;
         }
@@ -142,10 +144,14 @@ export class SearchRunner {
         this.reset();
         this.generator = this.generatorFactory();
         let lastEvent: StepEvent | null = null;
+        let metrics: LabMetrics | null = null;
 
         while (true) {
             const next = this.generator.next();
-            if (next.done) break;
+            if (next.done) {
+                metrics = next.value as LabMetrics;
+                break;
+            }
             lastEvent = next.value;
             this.history.push(lastEvent);
         }
@@ -154,7 +160,7 @@ export class SearchRunner {
             this.runnerStatus = RunnerStatus.Finished;
             this.currentStepIndex = this.history.length - 1;
             this.callbacks.onStep(lastEvent);
-            this.callbacks.onFinish(lastEvent);
+            this.callbacks.onFinish(lastEvent, metrics);
         }
 
         return lastEvent;

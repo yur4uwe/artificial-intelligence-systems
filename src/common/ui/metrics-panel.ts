@@ -1,6 +1,24 @@
 import { LabMetrics, StepEvent } from '@/types';
 import metricsPanelHtml from './metrics_panel.html?raw';
 
+export function formatExecutionTime(timeMs: number): { value: string; unit: string; full: string } {
+    if (timeMs <= 0) {
+        return { value: '< 0.01', unit: 'мс', full: '< 0.01 мс' };
+    }
+    if (timeMs < 0.1) {
+        const us = timeMs * 1000;
+        const val = us < 1 ? us.toFixed(2) : us.toFixed(1);
+        return { value: val, unit: 'мкс', full: `${val} мкс` };
+    }
+    if (timeMs < 1) {
+        return { value: timeMs.toFixed(3), unit: 'мс', full: `${timeMs.toFixed(3)} мс` };
+    }
+    if (timeMs >= 1000) {
+        return { value: (timeMs / 1000).toFixed(2), unit: 'с', full: `${(timeMs / 1000).toFixed(2)} с` };
+    }
+    return { value: timeMs.toFixed(2), unit: 'мс', full: `${timeMs.toFixed(2)} мс` };
+}
+
 export class MetricsPanel {
     private container: HTMLElement;
 
@@ -10,6 +28,7 @@ export class MetricsPanel {
     private openedNodesVal!: HTMLElement;
     private cyclesVal!: HTMLElement;
     private timeVal!: HTMLElement;
+    private timeUnitVal!: HTMLElement;
     private queueContainer!: HTMLElement;
     private logList!: HTMLElement;
 
@@ -27,6 +46,7 @@ export class MetricsPanel {
         this.openedNodesVal = this.container.querySelector('#mp-opened-nodes')!;
         this.cyclesVal = this.container.querySelector('#mp-cycles')!;
         this.timeVal = this.container.querySelector('#mp-exec-time')!;
+        this.timeUnitVal = this.container.querySelector('#mp-exec-unit')!;
         this.queueContainer = this.container.querySelector('#mp-queue-chips')!;
         this.logList = this.container.querySelector('#mp-log-list')!;
     }
@@ -113,7 +133,11 @@ export class MetricsPanel {
     }
 
     public setFinalMetrics(metrics: LabMetrics): void {
-        this.timeVal.textContent = metrics.executionTimeMs.toFixed(2);
+        const formatted = formatExecutionTime(metrics.executionTimeMs);
+        this.timeVal.textContent = formatted.value;
+        if (this.timeUnitVal) {
+            this.timeUnitVal.textContent = formatted.unit;
+        }
         if (metrics.foundPath) {
             this.pathLengthVal.textContent = `${metrics.pathLength}`;
         }
@@ -130,6 +154,9 @@ export class MetricsPanel {
         this.openedNodesVal.textContent = '0';
         this.cyclesVal.textContent = '0';
         this.timeVal.textContent = '0.00';
+        if (this.timeUnitVal) {
+            this.timeUnitVal.textContent = 'мс';
+        }
         this.queueContainer.innerHTML = '<span class="text-xs italic" style="color: var(--color-text-muted);">Черга порожня</span>';
         this.logList.innerHTML = '<div class="italic" style="color: var(--color-text-muted);">Журнал пошуку з\'явиться після запуску...</div>';
     }

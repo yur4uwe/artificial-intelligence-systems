@@ -51,12 +51,17 @@ export class GraphModel {
   private nodesMap: Map<number, GraphNode> = new Map();
   private edgesList: GraphEdge[] = [];
   private constraints: GraphConstraints = DEFAULT_GRAPH_CONSTRAINTS;
+  private version: number = 0;
 
   constructor(initialData?: GraphData, constraints: GraphConstraints = DEFAULT_GRAPH_CONSTRAINTS) {
     this.constraints = { ...constraints };
     if (initialData) {
       this.loadData(initialData);
     }
+  }
+
+  public getVersion(): number {
+    return this.version;
   }
 
   public setConstraints(constraints: Partial<GraphConstraints>): void {
@@ -73,6 +78,7 @@ export class GraphModel {
   public loadData(data: GraphData): void {
     this.nodesMap.clear();
     this.edgesList = [];
+    this.version++;
 
     data.nodes.forEach(node => {
       this.nodesMap.set(node.id, { ...node, radius: node.radius ?? 22, state: node.state ?? 'idle' });
@@ -121,12 +127,14 @@ export class GraphModel {
       state: 'idle',
     };
     this.nodesMap.set(newId, node);
+    this.version++;
     return node;
   }
 
   public removeNode(id: number): void {
     this.nodesMap.delete(id);
     this.edgesList = this.edgesList.filter(e => e.from !== id && e.to !== id);
+    this.version++;
   }
 
   /**
@@ -232,6 +240,7 @@ export class GraphModel {
     if (existing) {
       existing.isDirected = isDirected;
       if (weight !== undefined) existing.weight = weight;
+      this.version++;
       return existing;
     }
 
@@ -244,17 +253,20 @@ export class GraphModel {
       state: 'idle',
     };
     this.edgesList.push(edge);
+    this.version++;
     return edge;
   }
 
   public removeEdge(id: string): void {
     this.edgesList = this.edgesList.filter(e => e.id !== id);
+    this.version++;
   }
 
   public toggleEdgeDirection(id: string): void {
     const edge = this.edgesList.find(e => e.id === id);
     if (edge) {
       edge.isDirected = !edge.isDirected;
+      this.version++;
     }
   }
 
