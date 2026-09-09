@@ -94,7 +94,6 @@ export function benchmarkBFS(options: BFSOptions, iterations: number = 200): num
         runPureBFS(options);
     }
 
-    // Timed benchmark loop
     const t0 = performance.now();
     for (let i = 0; i < iterations; i++) {
         runPureBFS(options);
