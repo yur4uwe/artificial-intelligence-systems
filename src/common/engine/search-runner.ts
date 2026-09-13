@@ -33,9 +33,13 @@ export class SearchRunner<TStep = unknown> {
         this.callbacks = callbacks
     }
 
-    public setAlgorithm(algorithm: RunnableAlgorithm<TStep>): void {
+    public setAlgorithm(algorithm: RunnableAlgorithm<TStep> | null): void {
         this.algorithm = algorithm
         this.reset()
+    }
+
+    public hasAlgorithm(): boolean {
+        return this.algorithm !== null
     }
 
     public setSpeed(speedMs: number): void {
@@ -52,7 +56,8 @@ export class SearchRunner<TStep = unknown> {
 
     public start(): void {
         if (this.algorithm === null) {
-            throw new Error('Algorithm is not set')
+            console.warn('Algorithm is not set')
+            return
         }
 
         if (this.runnerStatus === RunnerStatus.Finished) {
@@ -78,7 +83,8 @@ export class SearchRunner<TStep = unknown> {
 
     public stepForward(): TStep | null {
         if (this.algorithm === null) {
-            throw new Error('Algorithm is not set')
+            console.warn('Algorithm is not set')
+            return null
         }
 
         if (this.runnerStatus === RunnerStatus.Finished) {
@@ -136,7 +142,8 @@ export class SearchRunner<TStep = unknown> {
 
     public runInstant(): TStep | null {
         if (this.algorithm === null) {
-            throw new Error('Algorithm is not set')
+            console.warn('Algorithm is not set')
+            return null
         }
 
         this.reset()

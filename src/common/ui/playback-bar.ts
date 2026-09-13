@@ -5,11 +5,13 @@ export interface PlaybackBarOptions {
     container: HTMLElement
     runner: SearchRunner<any>
     onStateChange?: () => void
+    canPlay?: () => boolean
 }
 
 export class PlaybackBar {
     private container: HTMLElement
     private runner: SearchRunner<any>
+    private options: PlaybackBarOptions
     private onStateChange?: () => void
 
     private btnPlay!: HTMLButtonElement
@@ -23,6 +25,7 @@ export class PlaybackBar {
     constructor(options: PlaybackBarOptions) {
         this.container = options.container
         this.runner = options.runner
+        this.options = options
         this.onStateChange = options.onStateChange
 
         this.render()
@@ -42,8 +45,20 @@ export class PlaybackBar {
         this.speedLabel = this.container.querySelector('#pb-speed-val')!
     }
 
+    private checkCanPlay(): boolean {
+        if (this.options.canPlay) {
+            return this.options.canPlay()
+        }
+        if (!this.runner.hasAlgorithm()) {
+            alert('Будь ласка, виберіть початкову (Start) та цільову (Goal) вершини!')
+            return false
+        }
+        return true
+    }
+
     private attachEvents(): void {
         this.btnPlay.addEventListener('click', () => {
+            if (!this.checkCanPlay()) return
             this.runner.start()
             this.updateButtons()
             this.onStateChange?.()
@@ -56,6 +71,7 @@ export class PlaybackBar {
         })
 
         this.btnStep.addEventListener('click', () => {
+            if (!this.checkCanPlay()) return
             if (this.runner.getStatus() === RunnerStatus.Running) {
                 this.runner.pause()
             }
@@ -65,6 +81,7 @@ export class PlaybackBar {
         })
 
         this.btnInstant.addEventListener('click', () => {
+            if (!this.checkCanPlay()) return
             this.runner.runInstant()
             this.updateButtons()
             this.onStateChange?.()

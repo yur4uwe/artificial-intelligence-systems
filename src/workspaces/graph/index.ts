@@ -73,6 +73,15 @@ export default class GraphWorkspace implements WorkspaceModule {
             container: this.context.playbackContainer,
             runner: this.runner,
             onStateChange: () => this.renderer.requestRender(),
+            canPlay: () => {
+                if (this.startId === null || this.goalId === null) {
+                    alert(
+                        'Будь ласка, виберіть початкову (Start) та цільову (Goal) вершини!'
+                    )
+                    return false
+                }
+                return true
+            },
         })
 
         // 5. Initialize Sidebar Panels
@@ -161,6 +170,8 @@ export default class GraphWorkspace implements WorkspaceModule {
 
     private updateAlgorithm(): void {
         if (this.startId === null || this.goalId === null) {
+            this.activeAlgorithm = null
+            this.runner.setAlgorithm(null)
             return
         }
 
@@ -204,8 +215,8 @@ export default class GraphWorkspace implements WorkspaceModule {
 
         this.model.loadData(data)
         this.renderer.setModel(this.model)
-        this.startId = 1
-        this.goalId = 31
+        this.startId = null
+        this.goalId = null
         this.syncUIState()
         this.updateAlgorithm()
         this.renderer.zoomToFit()
@@ -316,7 +327,7 @@ export default class GraphWorkspace implements WorkspaceModule {
         this.contextMenu.show(e.clientX, e.clientY, menuOptions)
     }
 
-    private setStartNode(id: number): void {
+    private setStartNode(id: number | null): void {
         this.startId = id
         this.labUI.setStart(id)
         this.runner.reset()
@@ -324,7 +335,7 @@ export default class GraphWorkspace implements WorkspaceModule {
         this.updateAlgorithm()
     }
 
-    private setGoalNode(id: number): void {
+    private setGoalNode(id: number | null): void {
         this.goalId = id
         this.labUI.setGoal(id)
         this.runner.reset()
@@ -333,7 +344,7 @@ export default class GraphWorkspace implements WorkspaceModule {
     }
 
     private swapStartAndGoal(): void {
-        if (this.startId === null || this.goalId === null) return
+        if (this.startId === null && this.goalId === null) return
         const tmp = this.startId
         this.startId = this.goalId
         this.goalId = tmp
@@ -354,22 +365,14 @@ export default class GraphWorkspace implements WorkspaceModule {
 
     private syncUIState(): void {
         const nodeIds = this.model.getNodes().map((n) => n.id)
-        if (
-            (this.startId === null || !nodeIds.includes(this.startId)) &&
-            nodeIds.length > 0
-        ) {
-            this.startId = nodeIds[0]
+        if (this.startId !== null && !nodeIds.includes(this.startId)) {
+            this.startId = null
         }
-        if (
-            (this.goalId === null || !nodeIds.includes(this.goalId)) &&
-            nodeIds.length > 0
-        ) {
-            this.goalId = nodeIds[nodeIds.length - 1]
+        if (this.goalId !== null && !nodeIds.includes(this.goalId)) {
+            this.goalId = null
         }
 
-        if (this.startId !== null && this.goalId !== null) {
-            this.labUI.updateNodeSelects(nodeIds, this.startId, this.goalId)
-        }
+        this.labUI.updateNodeSelects(nodeIds, this.startId, this.goalId)
         this.updateStartGoalColors()
     }
 

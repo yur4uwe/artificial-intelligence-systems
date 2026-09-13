@@ -13,10 +13,10 @@ export const WRKSPC_REGISTRY: WorkspaceManifest[] = [
     },
     {
         id: '1-blind-search',
-        title: 'Лабораторна 1: Сліпий пошук на графах (BFS)',
-        shortTitle: 'Лаб 1: BFS Пошук',
+        title: 'Сліпий пошук на графах (BFS та DFS)',
+        shortTitle: 'Пошук на графах',
         description:
-            'Дослідження пошуку в ширину на деревах, звичайних та орієнтованих графах',
+            'Дослідження пошуку в ширину та глибину на деревах, звичайних та орієнтованих графах',
         loader: async () => {
             const module = await import('./graph/index')
             return new module.default()

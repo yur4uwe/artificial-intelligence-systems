@@ -8,8 +8,8 @@ export interface GraphWorkspaceUIOptions {
     container: HTMLElement
     onAlgorithmChange: (algorithm: GraphAlgorithmType) => void
     onPresetChange: (presetKey: 'tree' | 'undirected' | 'directed') => void
-    onStartChange: (startId: number) => void
-    onGoalChange: (goalId: number) => void
+    onStartChange: (startId: number | null) => void
+    onGoalChange: (goalId: number | null) => void
     onSwapStartGoal: () => void
     onSortingChange: (strategy: NeighborSortingStrategy) => void
     onInteractionModeChange: (mode: CanvasInteractionMode) => void
@@ -67,11 +67,13 @@ export class GraphParamsTab {
         })
 
         this.startSelect.addEventListener('change', () => {
-            this.options.onStartChange(parseInt(this.startSelect.value, 10))
+            const val = this.startSelect.value
+            this.options.onStartChange(val ? parseInt(val, 10) : null)
         })
 
         this.goalSelect.addEventListener('change', () => {
-            this.options.onGoalChange(parseInt(this.goalSelect.value, 10))
+            const val = this.goalSelect.value
+            this.options.onGoalChange(val ? parseInt(val, 10) : null)
         })
 
         this.btnSwap.addEventListener('click', () => {
@@ -113,30 +115,37 @@ export class GraphParamsTab {
 
     public updateNodeSelects(
         nodeIds: number[],
-        currentStart: number,
-        currentGoal: number
+        currentStart: number | null,
+        currentGoal: number | null
     ): void {
-        this.startSelect.innerHTML = nodeIds
-            .map(
-                (id) =>
-                    `<option value="${id}" ${id === currentStart ? 'selected' : ''}>Вершина v${id}</option>`
-            )
-            .join('')
+        const placeholderStart = `<option value="" ${currentStart === null ? 'selected' : ''}>— Не вибрано —</option>`
+        const placeholderGoal = `<option value="" ${currentGoal === null ? 'selected' : ''}>— Не вибрано —</option>`
 
-        this.goalSelect.innerHTML = nodeIds
-            .map(
-                (id) =>
-                    `<option value="${id}" ${id === currentGoal ? 'selected' : ''}>Вершина v${id}</option>`
-            )
-            .join('')
+        this.startSelect.innerHTML =
+            placeholderStart +
+            nodeIds
+                .map(
+                    (id) =>
+                        `<option value="${id}" ${id === currentStart ? 'selected' : ''}>Вершина v${id}</option>`
+                )
+                .join('')
+
+        this.goalSelect.innerHTML =
+            placeholderGoal +
+            nodeIds
+                .map(
+                    (id) =>
+                        `<option value="${id}" ${id === currentGoal ? 'selected' : ''}>Вершина v${id}</option>`
+                )
+                .join('')
     }
 
-    public setStart(id: number): void {
-        this.startSelect.value = `${id}`
+    public setStart(id: number | null): void {
+        this.startSelect.value = id !== null ? `${id}` : ''
     }
 
-    public setGoal(id: number): void {
-        this.goalSelect.value = `${id}`
+    public setGoal(id: number | null): void {
+        this.goalSelect.value = id !== null ? `${id}` : ''
     }
 
     public setInteractionMode(mode: CanvasInteractionMode): void {
