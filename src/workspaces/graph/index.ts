@@ -1,115 +1,97 @@
-import { WorkspaceModule, LabMetrics, StepEvent } from '@/types'
+import { WorkspaceModule, WorkspaceContext } from '@/types'
 import {
     GraphModel,
     NeighborSortingStrategy,
     TREE_CONSTRAINTS,
     UNDIRECTED_GRAPH_CONSTRAINTS,
     DIRECTED_GRAPH_CONSTRAINTS,
-} from '@common/graph/graph-model'
+} from './graph-model'
 import {
     CanvasRenderer,
     ContextMenuEvent as ContextMenuDrawEvent,
-} from '@common/graph/canvas-renderer'
+} from './drawing/canvas-renderer'
 import { SearchRunner } from '@common/engine/search-runner'
 import { PlaybackBar } from '@common/ui/playback-bar'
-import { MetricsPanel } from '@common/ui/metrics-panel'
-import { GraphParamsTab } from './wrkspc-ui'
+import { GraphMetricsPanel } from './ui/metrics-panel'
+import { GraphParamsTab, GraphAlgorithmType } from './wrkspc-ui'
 import {
     createTreePreset,
     createUndirectedPreset,
     createDirectedPreset,
 } from './presets'
-import { runBFS } from '@algorithms/bfs'
-import { exportMetricsToCSV } from '@common/graph/export-utils'
+import BFSAlgorithm from '@algs/graph/bfs'
+import DFSAlgorithm from '@algs/graph/dfs'
+import { exportMetricsToCSV } from './export-utils'
 import { ContextMenu, ContextMenuItem } from '@common/ui/context-menu'
-import blindSearchHtml from './params-tab.html?raw'
+import { GraphMetrics, GraphStepEvent } from '@/algorithms/graph/common'
+import { BaseGraphSearch } from '@/algorithms/graph/base'
 
 export default class GraphWorkspace implements WorkspaceModule {
     public id = 'graph-workspace'
 
-    private container!: HTMLElement
+    private context!: WorkspaceContext
     private model!: GraphModel
     private renderer!: CanvasRenderer
-    private runner!: SearchRunner
+    private runner!: SearchRunner<GraphStepEvent>
     private playbackBar!: PlaybackBar
-    private metricsPanel!: MetricsPanel
+    private metricsPanel!: GraphMetricsPanel
     private contextMenu!: ContextMenu
     private labUI!: GraphParamsTab
-    private resizeObserver!: ResizeObserver
 
-    private startId: number = 1
-    private goalId: number = 31
+    private activeAlgorithmType: GraphAlgorithmType = 'bfs'
+    private startId: number | null = null
+    private goalId: number | null = null
     private sortingStrategy: NeighborSortingStrategy = 'ascending-id'
-    private lastMetrics: LabMetrics | null = null
+    private lastMetrics: GraphMetrics | null = null
     private activePreset: 'tree' | 'undirected' | 'directed' = 'tree'
 
-    public async mount(container: HTMLElement): Promise<void> {
-        this.container = container
-        this.container.innerHTML = blindSearchHtml
+    private activeAlgorithm: BaseGraphSearch | null = null
+
+    public async mount(context: WorkspaceContext): Promise<void> {
+        this.context = context
 
         // 1. Initialize Graph Model with Tree constraints by default
         this.model = new GraphModel(createTreePreset(), TREE_CONSTRAINTS)
 
         // 2. Initialize Canvas Renderer
-        const canvasEl = this.container.querySelector(
-            '#l1-canvas'
-        ) as HTMLCanvasElement
-        this.renderer = new CanvasRenderer(canvasEl, this.model, {
+        this.renderer = new CanvasRenderer(this.context.canvas, this.model, {
             onNodeClick: (nodeId) => this.handleCanvasNodeClick(nodeId),
             onCanvasChange: () => this.handleCanvasChange(),
             onSelectionChange: () => {},
             onContextMenu: (e) => this.handleContextMenu(e),
         })
 
-        this.resizeObserver = new ResizeObserver(() => {
-            this.renderer.resize()
-        })
-        this.resizeObserver.observe(this.container)
-
         // 3. Initialize Search Runner Engine
-        this.runner = new SearchRunner(
-            () =>
-                runBFS({
-                    model: this.model,
-                    startId: this.startId,
-                    goalId: this.goalId,
-                    sortingStrategy: this.sortingStrategy,
-                }),
-            {
-                onStep: (event) => this.handleStep(event),
-                onFinish: (event, metrics) => this.handleFinish(event, metrics),
-                onReset: () => this.handleReset(),
-            }
-        )
+        this.runner = new SearchRunner<GraphStepEvent>({
+            onStep: (event) => this.handleStep(event),
+            onFinish: (event) => this.handleFinish(event),
+            onReset: () => this.handleReset(),
+        })
 
-        // 4. Initialize Playback Bar
-        const playbackContainer = this.container.querySelector(
-            '#l1-playback-container'
-        ) as HTMLElement
+        // 4. Initialize Playback Bar in global playback container
         this.playbackBar = new PlaybackBar({
-            container: playbackContainer,
+            container: this.context.playbackContainer,
             runner: this.runner,
             onStateChange: () => this.renderer.requestRender(),
         })
 
         // 5. Initialize Sidebar Panels
-        const paramsContainer = this.container.querySelector(
-            '#l1-params-panel'
-        ) as HTMLElement
-        const metricsContainer = this.container.querySelector(
-            '#l1-metrics-panel'
-        ) as HTMLElement
-
-        this.metricsPanel = new MetricsPanel(metricsContainer)
+        this.metricsPanel = new GraphMetricsPanel(this.context.metricsContainer)
 
         this.labUI = new GraphParamsTab({
-            container: paramsContainer,
+            container: this.context.paramsContainer,
+            onAlgorithmChange: (algo) => {
+                this.activeAlgorithmType = algo
+                this.runner.reset()
+                this.updateAlgorithm()
+            },
             onPresetChange: (key) => this.loadPreset(key),
             onStartChange: (id) => this.setStartNode(id),
             onGoalChange: (id) => this.setGoalNode(id),
             onSwapStartGoal: () => this.swapStartAndGoal(),
             onSortingChange: (strat) => {
                 this.sortingStrategy = strat
+                this.updateAlgorithm()
                 this.runner.reset()
             },
             onInteractionModeChange: (mode) => {
@@ -120,14 +102,19 @@ export default class GraphWorkspace implements WorkspaceModule {
         })
 
         this.contextMenu = new ContextMenu()
-        this.initSidebarTabs()
+
         this.syncUIState()
+        this.updateAlgorithm()
 
         // Auto-fit initial graph view after a brief layout delay
         setTimeout(() => {
             this.renderer.resize()
             this.renderer.zoomToFit()
         }, 50)
+    }
+
+    public onResize(): void {
+        this.renderer.resize()
     }
 
     public unmount(): void {
@@ -153,13 +140,14 @@ export default class GraphWorkspace implements WorkspaceModule {
             statusText: 'Пошук не виконувався',
         }
 
-        const csvContent = exportMetricsToCSV(
-            metrics,
-            history,
-            'Лабораторна 1: Пошук в ширину (BFS)'
-        )
+        const algoTitle =
+            this.activeAlgorithmType === 'bfs'
+                ? 'Лабораторна 1: Пошук в ширину (BFS)'
+                : 'Лабораторна 2: Пошук в глибину (DFS)'
+
+        const csvContent = exportMetricsToCSV(metrics, history, algoTitle)
         return {
-            filename: `lab1-bfs-results-${Date.now()}.csv`,
+            filename: `graph-${this.activeAlgorithmType}-results-${Date.now()}.csv`,
             content: csvContent,
             mimeType: 'text/csv;charset=utf-8;',
         }
@@ -170,6 +158,29 @@ export default class GraphWorkspace implements WorkspaceModule {
     }
 
     // --- Handlers & Internal Logic ---
+
+    private updateAlgorithm(): void {
+        if (this.startId === null || this.goalId === null) {
+            return
+        }
+
+        const options = {
+            model: this.model,
+            startId: this.startId,
+            goalId: this.goalId,
+            sortingStrategy: this.sortingStrategy,
+        }
+
+        if (this.activeAlgorithmType === 'bfs') {
+            this.activeAlgorithm = new BFSAlgorithm(options)
+            this.metricsPanel.setFrontierLabel('Черга (FIFO)')
+        } else {
+            this.activeAlgorithm = new DFSAlgorithm(options)
+            this.metricsPanel.setFrontierLabel('Стек (LIFO)')
+        }
+
+        this.runner.setAlgorithm(this.activeAlgorithm)
+    }
 
     private loadPreset(key: 'tree' | 'undirected' | 'directed'): void {
         this.activePreset = key
@@ -196,6 +207,7 @@ export default class GraphWorkspace implements WorkspaceModule {
         this.startId = 1
         this.goalId = 31
         this.syncUIState()
+        this.updateAlgorithm()
         this.renderer.zoomToFit()
     }
 
@@ -215,12 +227,13 @@ export default class GraphWorkspace implements WorkspaceModule {
     private handleCanvasChange(): void {
         this.runner.reset()
         this.syncUIState()
+        this.updateAlgorithm()
     }
 
     private handleContextMenu(e: ContextMenuDrawEvent): void {
         let menuOptions = [] as ContextMenuItem[]
         switch (e.target.type) {
-            case 'node':
+            case 'node': {
                 const targetNodeId = e.target.nodeId
                 menuOptions = [
                     {
@@ -258,7 +271,8 @@ export default class GraphWorkspace implements WorkspaceModule {
                     },
                 ]
                 break
-            case 'edge':
+            }
+            case 'edge': {
                 const targetEdgeId = e.target.edgeId
                 menuOptions = [
                     {
@@ -271,7 +285,8 @@ export default class GraphWorkspace implements WorkspaceModule {
                     },
                 ]
                 break
-            case 'canvas':
+            }
+            case 'canvas': {
                 menuOptions = [
                     {
                         label: 'Додати вершину тут',
@@ -291,10 +306,12 @@ export default class GraphWorkspace implements WorkspaceModule {
                     },
                 ]
                 break
-            default:
+            }
+            default: {
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 const _exhaustiveCheck: never = e.target
                 return
+            }
         }
         this.contextMenu.show(e.clientX, e.clientY, menuOptions)
     }
@@ -304,6 +321,7 @@ export default class GraphWorkspace implements WorkspaceModule {
         this.labUI.setStart(id)
         this.runner.reset()
         this.updateStartGoalColors()
+        this.updateAlgorithm()
     }
 
     private setGoalNode(id: number): void {
@@ -311,9 +329,11 @@ export default class GraphWorkspace implements WorkspaceModule {
         this.labUI.setGoal(id)
         this.runner.reset()
         this.updateStartGoalColors()
+        this.updateAlgorithm()
     }
 
     private swapStartAndGoal(): void {
+        if (this.startId === null || this.goalId === null) return
         const tmp = this.startId
         this.startId = this.goalId
         this.goalId = tmp
@@ -321,32 +341,43 @@ export default class GraphWorkspace implements WorkspaceModule {
         this.labUI.setGoal(this.goalId)
         this.runner.reset()
         this.updateStartGoalColors()
+        this.updateAlgorithm()
     }
 
     private updateStartGoalColors(): void {
         this.model.resetVisualStates({
-            startId: this.startId,
-            goalId: this.goalId,
+            startId: this.startId ?? undefined,
+            goalId: this.goalId ?? undefined,
         })
         this.renderer.requestRender()
     }
 
     private syncUIState(): void {
         const nodeIds = this.model.getNodes().map((n) => n.id)
-        if (!nodeIds.includes(this.startId) && nodeIds.length > 0)
+        if (
+            (this.startId === null || !nodeIds.includes(this.startId)) &&
+            nodeIds.length > 0
+        ) {
             this.startId = nodeIds[0]
-        if (!nodeIds.includes(this.goalId) && nodeIds.length > 0)
+        }
+        if (
+            (this.goalId === null || !nodeIds.includes(this.goalId)) &&
+            nodeIds.length > 0
+        ) {
             this.goalId = nodeIds[nodeIds.length - 1]
+        }
 
-        this.labUI.updateNodeSelects(nodeIds, this.startId, this.goalId)
+        if (this.startId !== null && this.goalId !== null) {
+            this.labUI.updateNodeSelects(nodeIds, this.startId, this.goalId)
+        }
         this.updateStartGoalColors()
     }
 
-    private handleStep(event: StepEvent): void {
+    private handleStep(event: GraphStepEvent): void {
         // 1. Reset node/edge states but keep Start/Goal markers
         this.model.resetVisualStates({
-            startId: this.startId,
-            goalId: this.goalId,
+            startId: this.startId ?? undefined,
+            goalId: this.goalId ?? undefined,
         })
 
         // 2. Mark visited nodes
@@ -356,8 +387,8 @@ export default class GraphWorkspace implements WorkspaceModule {
             }
         })
 
-        // 3. Mark nodes currently in queue
-        event.queue.forEach((id) => {
+        // 3. Mark nodes currently in frontier
+        event.frontier.forEach((id) => {
             if (id !== this.startId && id !== this.goalId) {
                 this.model.setNodeState(id, 'in-queue')
             }
@@ -400,79 +431,25 @@ export default class GraphWorkspace implements WorkspaceModule {
         this.metricsPanel.updateStep(event)
     }
 
-    private handleFinish(_event: StepEvent, metrics?: LabMetrics | null): void {
+    private handleFinish(_event: GraphStepEvent): void {
         this.playbackBar.updateButtons()
+        const metrics = this.activeAlgorithm?.getMetrics()
         if (metrics) {
             this.lastMetrics = metrics
             this.metricsPanel.setFinalMetrics(metrics)
         }
         // Auto switch to Results tab on finish
-        this.switchSidebarTab('metrics')
+        this.context.switchSidebarTab('metrics')
     }
 
     private handleReset(): void {
         this.lastMetrics = null
         this.model.resetVisualStates({
-            startId: this.startId,
-            goalId: this.goalId,
+            startId: this.startId ?? undefined,
+            goalId: this.goalId ?? undefined,
         })
         this.renderer.requestRender()
         this.metricsPanel.reset()
         this.playbackBar.updateButtons()
-    }
-
-    private initSidebarTabs(): void {
-        const btnParams = this.container.querySelector('#tab-btn-params')!
-        const btnMetrics = this.container.querySelector('#tab-btn-metrics')!
-
-        btnParams.addEventListener('click', () =>
-            this.switchSidebarTab('params')
-        )
-        btnMetrics.addEventListener('click', () =>
-            this.switchSidebarTab('metrics')
-        )
-    }
-
-    private switchSidebarTab(tab: 'params' | 'metrics'): void {
-        const btnParams = this.container.querySelector(
-            '#tab-btn-params'
-        ) as HTMLElement
-        const btnMetrics = this.container.querySelector(
-            '#tab-btn-metrics'
-        ) as HTMLElement
-        const panelParams = this.container.querySelector('#l1-params-panel')!
-        const panelMetrics = this.container.querySelector('#l1-metrics-panel')!
-
-        if (tab === 'params') {
-            btnParams.style.backgroundColor = 'var(--color-bg-surface)'
-            btnParams.style.color = 'var(--color-text-primary)'
-            btnParams.style.borderColor = 'var(--color-border-muted)'
-            btnParams.classList.add('font-semibold')
-            btnParams.classList.remove('font-medium')
-
-            btnMetrics.style.backgroundColor = 'transparent'
-            btnMetrics.style.color = 'var(--color-text-secondary)'
-            btnMetrics.style.borderColor = 'transparent'
-            btnMetrics.classList.add('font-medium')
-            btnMetrics.classList.remove('font-semibold')
-
-            panelParams.classList.remove('hidden')
-            panelMetrics.classList.add('hidden')
-        } else {
-            btnMetrics.style.backgroundColor = 'var(--color-bg-surface)'
-            btnMetrics.style.color = 'var(--color-text-primary)'
-            btnMetrics.style.borderColor = 'var(--color-border-muted)'
-            btnMetrics.classList.add('font-semibold')
-            btnMetrics.classList.remove('font-medium')
-
-            btnParams.style.backgroundColor = 'transparent'
-            btnParams.style.color = 'var(--color-text-secondary)'
-            btnParams.style.borderColor = 'transparent'
-            btnParams.classList.add('font-medium')
-            btnParams.classList.remove('font-semibold')
-
-            panelMetrics.classList.remove('hidden')
-            panelParams.classList.add('hidden')
-        }
     }
 }

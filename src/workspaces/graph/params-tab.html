@@ -1,4 +1,15 @@
 <div class="flex flex-col gap-4 text-xs">
+  <!-- Algorithm Selector -->
+  <div class="border rounded-xl p-3 shadow-md" style="background-color: var(--color-bg-app); border-color: var(--color-border-subtle);">
+    <label class="font-semibold block mb-1.5 flex items-center gap-1.5" style="color: var(--color-text-primary);">
+      <span>Алгоритм пошуку:</span>
+    </label>
+    <select id="l1-algorithm-select" class="w-full border rounded-lg px-2.5 py-1.5 text-xs font-medium outline-none cursor-pointer" style="background-color: var(--color-bg-surface); border-color: var(--color-border-muted); color: var(--color-text-primary);">
+      <option value="bfs" selected>1. BFS — Пошук в ширину (FIFO черга)</option>
+      <option value="dfs">2. DFS — Пошук в глибину (LIFO стек)</option>
+    </select>
+  </div>
+
   <!-- Preset Selector -->
   <div class="border rounded-xl p-3 shadow-md" style="background-color: var(--color-bg-app); border-color: var(--color-border-subtle);">
     <label class="font-semibold block mb-1.5 flex items-center gap-1.5" style="color: var(--color-text-primary);">

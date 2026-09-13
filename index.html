@@ -34,9 +34,36 @@
 
   <!-- Main Viewport for Active Lab -->
   <main id="app-viewport" class="flex-1 flex overflow-hidden relative">
-    <!-- Active Lab mounts here -->
-    <div id="lab-container" class="w-full h-full flex"></div>
-    
+    <!-- Main Workspace Area: Canvas and Floating Playback Bar -->
+    <div id="workspace-main" class="flex-1 flex flex-col relative overflow-hidden h-full" style="background-color: var(--color-bg-app);">
+      <!-- Canvas Mount Container (recreated on lab switch to prevent context leaks) -->
+      <div id="canvas-container" class="w-full h-full relative overflow-hidden flex-1">
+        <canvas id="app-canvas" class="w-full h-full block touch-none cursor-crosshair"></canvas>
+      </div>
+
+      <!-- Floating Bottom Playback Controller -->
+      <div id="playback-container" class="absolute bottom-4 left-4 right-4 max-w-2xl mx-auto z-20"></div>
+    </div>
+
+    <!-- Right Control & Metrics Sidebar -->
+    <aside id="app-sidebar" class="w-96 border-l flex flex-col h-full z-10 shrink-0" style="background-color: var(--color-bg-surface); border-color: var(--color-border-subtle);">
+      <!-- Sidebar Header / Tabs -->
+      <div id="sidebar-tabs" class="flex border-b p-1 shrink-0 text-xs" style="background-color: var(--color-bg-elevated); border-color: var(--color-border-subtle);">
+        <button id="tab-btn-params" class="flex-1 py-1.5 rounded-lg text-center transition font-semibold border" style="background-color: var(--color-bg-surface); color: var(--color-text-primary); border-color: var(--color-border-muted);">
+          Параметри
+        </button>
+        <button id="tab-btn-metrics" class="flex-1 py-1.5 rounded-lg text-center transition font-medium border" style="background-color: transparent; color: var(--color-text-secondary); border-color: transparent;">
+          Результати
+        </button>
+      </div>
+
+      <!-- Sidebar Content Panels -->
+      <div id="sidebar-content" class="flex-1 overflow-y-auto p-3">
+        <div id="sidebar-params-panel" class="flex flex-col gap-3"></div>
+        <div id="sidebar-metrics-panel" class="hidden flex flex-col gap-3"></div>
+      </div>
+    </aside>
+
     <!-- Loading Overlay for Lazy Loading -->
     <div id="loading-overlay" class="hidden absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center">
       <div class="flex flex-col items-center gap-3">

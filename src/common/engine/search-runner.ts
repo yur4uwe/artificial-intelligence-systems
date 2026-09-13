@@ -21,7 +21,7 @@ export enum RunnerStatus {
 
 export class SearchRunner<TStep = unknown> {
     private algorithm: RunnableAlgorithm<TStep> | null = null
-    private callbacks: SearchRunnerCallbacks
+    private callbacks: SearchRunnerCallbacks<TStep>
 
     private runnerStatus: RunnerStatus = RunnerStatus.Zero
     private speedMs: number = 100
@@ -29,7 +29,7 @@ export class SearchRunner<TStep = unknown> {
     private history: TStep[] = []
     private currentStepIndex: number = -1
 
-    constructor(callbacks: SearchRunnerCallbacks) {
+    constructor(callbacks: SearchRunnerCallbacks<TStep>) {
         this.callbacks = callbacks
     }
 

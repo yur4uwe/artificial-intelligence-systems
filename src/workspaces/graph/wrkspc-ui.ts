@@ -1,9 +1,12 @@
-import { NeighborSortingStrategy } from '@common/graph/graph-model'
-import { CanvasInteractionMode } from '@common/graph/canvas-renderer'
-import graphParamsHtml from './results-tab.html?raw'
+import { NeighborSortingStrategy } from './graph-model'
+import { CanvasInteractionMode } from './drawing/canvas-renderer'
+import graphParamsHtml from './params-tab.html?raw'
+
+export type GraphAlgorithmType = 'bfs' | 'dfs'
 
 export interface GraphWorkspaceUIOptions {
     container: HTMLElement
+    onAlgorithmChange: (algorithm: GraphAlgorithmType) => void
     onPresetChange: (presetKey: 'tree' | 'undirected' | 'directed') => void
     onStartChange: (startId: number) => void
     onGoalChange: (goalId: number) => void
@@ -18,6 +21,7 @@ export class GraphParamsTab {
     private container: HTMLElement
     private options: GraphWorkspaceUIOptions
 
+    private algorithmSelect!: HTMLSelectElement
     private presetSelect!: HTMLSelectElement
     private startSelect!: HTMLSelectElement
     private goalSelect!: HTMLSelectElement
@@ -36,6 +40,7 @@ export class GraphParamsTab {
     private render(): void {
         this.container.innerHTML = graphParamsHtml
 
+        this.algorithmSelect = this.container.querySelector('#l1-algorithm-select')!
         this.presetSelect = this.container.querySelector('#l1-preset-select')!
         this.startSelect = this.container.querySelector('#l1-start-select')!
         this.goalSelect = this.container.querySelector('#l1-goal-select')!
@@ -49,6 +54,12 @@ export class GraphParamsTab {
     }
 
     private attachEvents(): void {
+        this.algorithmSelect?.addEventListener('change', () => {
+            this.options.onAlgorithmChange(
+                this.algorithmSelect.value as GraphAlgorithmType
+            )
+        })
+
         this.presetSelect.addEventListener('change', () => {
             this.options.onPresetChange(
                 this.presetSelect.value as 'tree' | 'undirected' | 'directed'
@@ -132,5 +143,11 @@ export class GraphParamsTab {
         this.modeRadios.forEach((radio) => {
             radio.checked = radio.value === mode
         })
+    }
+
+    public setAlgorithm(algo: GraphAlgorithmType): void {
+        if (this.algorithmSelect) {
+            this.algorithmSelect.value = algo
+        }
     }
 }

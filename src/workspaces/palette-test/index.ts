@@ -1,4 +1,4 @@
-import { WorkspaceModule } from '@/types'
+import { WorkspaceModule, WorkspaceContext } from '@/types'
 import {
     ThemePalette,
     getActiveTheme,
@@ -15,7 +15,6 @@ export default class PaletteTest implements WorkspaceModule {
 
     private container!: HTMLElement
     private unsubscribeTheme?: () => void
-    private resizeObserver?: ResizeObserver
 
     // Canvases
     private nodeCanvas!: HTMLCanvasElement
@@ -30,8 +29,9 @@ export default class PaletteTest implements WorkspaceModule {
     private toastEl!: HTMLElement
     private toastTimer: any = null
 
-    public async mount(container: HTMLElement): Promise<void> {
-        this.container = container
+    public async mount(context: WorkspaceContext): Promise<void> {
+        context.setSidebarVisible(false)
+        this.container = context.canvasContainer
         this.container.innerHTML = templateHtml
 
         this.cacheElements()
@@ -43,20 +43,15 @@ export default class PaletteTest implements WorkspaceModule {
         this.unsubscribeTheme = onThemeChange(() => {
             this.renderAllSpecimens()
         })
+    }
 
-        // Auto re-render on resize
-        this.resizeObserver = new ResizeObserver(() => {
-            this.renderAllCanvases()
-        })
-        this.resizeObserver.observe(this.container)
+    public onResize(): void {
+        this.renderAllCanvases()
     }
 
     public async unmount(): Promise<void> {
         if (this.unsubscribeTheme) {
             this.unsubscribeTheme()
-        }
-        if (this.resizeObserver) {
-            this.resizeObserver.disconnect()
         }
     }
 
