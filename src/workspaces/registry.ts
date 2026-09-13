@@ -1,24 +1,25 @@
-import { LabManifest } from '@/types';
+import { WorkspaceManifest } from '@/types'
 
-export const LABS_REGISTRY: LabManifest[] = [
+export const WRKSPC_REGISTRY: WorkspaceManifest[] = [
     {
         id: '0-palette-test',
         title: 'Palette Test',
         shortTitle: 'Palette Test',
         description: 'Test palette',
         loader: async () => {
-            const module = await import('./0-palette-test/index');
-            return new module.default();
+            const module = await import('./palette-test/index')
+            return new module.default()
         },
     },
     {
         id: '1-blind-search',
         title: 'Лабораторна 1: Сліпий пошук на графах (BFS)',
         shortTitle: 'Лаб 1: BFS Пошук',
-        description: 'Дослідження пошуку в ширину на деревах, звичайних та орієнтованих графах',
+        description:
+            'Дослідження пошуку в ширину на деревах, звичайних та орієнтованих графах',
         loader: async () => {
-            const module = await import('./1-blind-search/index');
-            return new module.default();
+            const module = await import('./graph/index')
+            return new module.default()
         },
     },
     // {
@@ -47,4 +48,4 @@ export const LABS_REGISTRY: LabManifest[] = [
     //         };
     //     },
     // },
-];
+]
