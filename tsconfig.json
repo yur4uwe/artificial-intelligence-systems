@@ -18,7 +18,8 @@
     "paths": {
         "@/*": ["src/*"],
         "@common/*": ["src/common/*"],
-        "@labs/*": ["src/labs/*"]
+        "@wrkspc/*": ["src/workspaces/*"],
+        "@algs/*": ["src/algorithms/*"]
     }
   },
   "include": ["src"]

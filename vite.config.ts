@@ -8,8 +8,8 @@ export default defineConfig({
         alias: {
             '@': resolve(import.meta.dirname, './src'),
             '@common': resolve(import.meta.dirname, './src/common'),
-            '@workspaces': resolve(import.meta.dirname, './src/workspaces'),
-            '@algorithms': resolve(import.meta.dirname, './src/algorithms'),
+            '@wrkspc': resolve(import.meta.dirname, './src/workspaces'),
+            '@algs': resolve(import.meta.dirname, './src/algorithms'),
         },
     },
     server: {

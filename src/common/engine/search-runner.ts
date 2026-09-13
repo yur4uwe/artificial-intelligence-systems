@@ -128,25 +128,26 @@ export class SearchRunner<TStep = unknown> {
             this.timerId = null
         }
         this.runnerStatus = RunnerStatus.Zero
-        this.algorithm = null
+        this.algorithm?.reset()
         this.history = []
         this.currentStepIndex = -1
         this.callbacks.onReset()
     }
 
     public runInstant(): TStep | null {
-        this.reset()
         if (this.algorithm === null) {
             throw new Error('Algorithm is not set')
         }
+
+        this.reset()
         let lastEvent: TStep | null = null
 
         while (true) {
             const stepEvent = this.algorithm.step()
             if (stepEvent === null) {
-                lastEvent = stepEvent
                 break
             }
+            lastEvent = stepEvent
             this.history.push(stepEvent)
         }
 
