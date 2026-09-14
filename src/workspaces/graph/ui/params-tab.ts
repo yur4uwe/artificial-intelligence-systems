@@ -1,5 +1,5 @@
-import { NeighborSortingStrategy } from './graph-model'
-import { CanvasInteractionMode } from './drawing/canvas-renderer'
+import { NeighborSortingStrategy } from '../graph-model'
+import { CanvasInteractionMode } from '../drawing/canvas-renderer'
 import graphParamsHtml from './params-tab.html?raw'
 
 export type GraphAlgorithmType = 'bfs' | 'dfs'

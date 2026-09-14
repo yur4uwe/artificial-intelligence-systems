@@ -1,12 +1,12 @@
 import { StepEvent } from '@/types'
 
-export interface RunnableAlgorithm<TStep> {
+export interface RunnableAlgorithm<TStep extends StepEvent = StepEvent> {
     step(): TStep | null
     reset(): void
     isFinished(): boolean
 }
 
-export interface SearchRunnerCallbacks<TStep = unknown> {
+export interface SearchRunnerCallbacks<TStep extends StepEvent = StepEvent> {
     onStep: (event: TStep) => void
     onFinish: (lastEvent: TStep) => void
     onReset: () => void
@@ -19,7 +19,7 @@ export enum RunnerStatus {
     Finished = 'finished',
 }
 
-export class SearchRunner<TStep = unknown> {
+export class SearchRunner<TStep extends StepEvent = StepEvent> {
     private algorithm: RunnableAlgorithm<TStep> | null = null
     private callbacks: SearchRunnerCallbacks<TStep>
 
@@ -161,7 +161,9 @@ export class SearchRunner<TStep = unknown> {
         if (lastEvent) {
             this.runnerStatus = RunnerStatus.Finished
             this.currentStepIndex = this.history.length - 1
-            this.callbacks.onStep(lastEvent)
+            for (const step of this.history) {
+                this.callbacks.onStep(step)
+            }
             this.callbacks.onFinish(lastEvent)
         }
 

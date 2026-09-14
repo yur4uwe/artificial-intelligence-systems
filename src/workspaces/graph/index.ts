@@ -13,7 +13,7 @@ import {
 import { SearchRunner } from '@common/engine/search-runner'
 import { PlaybackBar } from '@common/ui/playback-bar'
 import { GraphMetricsPanel } from './ui/metrics-panel'
-import { GraphParamsTab, GraphAlgorithmType } from './wrkspc-ui'
+import { GraphParamsTab, GraphAlgorithmType } from './ui/params-tab'
 import {
     createTreePreset,
     createUndirectedPreset,
@@ -357,8 +357,8 @@ export default class GraphWorkspace implements WorkspaceModule {
 
     private updateStartGoalColors(): void {
         this.model.resetVisualStates({
-            startId: this.startId ?? undefined,
-            goalId: this.goalId ?? undefined,
+            startId: this.startId,
+            goalId: this.goalId,
         })
         this.renderer.requestRender()
     }
@@ -379,8 +379,8 @@ export default class GraphWorkspace implements WorkspaceModule {
     private handleStep(event: GraphStepEvent): void {
         // 1. Reset node/edge states but keep Start/Goal markers
         this.model.resetVisualStates({
-            startId: this.startId ?? undefined,
-            goalId: this.goalId ?? undefined,
+            startId: this.startId,
+            goalId: this.goalId,
         })
 
         // 2. Mark visited nodes
@@ -448,8 +448,8 @@ export default class GraphWorkspace implements WorkspaceModule {
     private handleReset(): void {
         this.lastMetrics = null
         this.model.resetVisualStates({
-            startId: this.startId ?? undefined,
-            goalId: this.goalId ?? undefined,
+            startId: this.startId,
+            goalId: this.goalId,
         })
         this.renderer.requestRender()
         this.metricsPanel.reset()

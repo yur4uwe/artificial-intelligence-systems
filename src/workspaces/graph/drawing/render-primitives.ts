@@ -1,5 +1,5 @@
 import { ThemePalette } from '@common/theme/palette'
-import { GraphNode, GraphEdge } from './types'
+import { GraphNode, GraphEdge } from '../types'
 
 export interface NodeDrawOptions {
     x: number

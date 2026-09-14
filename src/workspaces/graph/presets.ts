@@ -1,4 +1,4 @@
-import { GraphData, GraphNode, GraphEdge } from '@/types';
+import { GraphData, GraphNode, GraphEdge } from './types';
 
 /**
  * Creates explicit 32-vertex layout with fixed coordinates (>= 30 vertices, >= 30-40 edges, >= 5 levels).
