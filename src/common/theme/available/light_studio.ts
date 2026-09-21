@@ -81,6 +81,21 @@ export const LIGHT_STUDIO_THEME: ThemePalette = {
                 glow: 'rgba(56, 189, 248, 0.45)',
                 text: '#ffffff',
             },
+            secondWave: {
+                fillGradientStart: '#a855f7',
+                fillGradientEnd: '#9333ea',
+                stroke: '#7e22ce',
+                glow: 'rgba(168, 85, 247, 0.3)',
+                badgeBg: '#9333ea',
+                text: '#ffffff',
+            },
+            wall: {
+                fillGradientStart: '#334155',
+                fillGradientEnd: '#1e293b',
+                stroke: '#0f172a',
+                strokeHover: '#3b82f6',
+                text: '#94a3b8',
+            },
         },
     },
 };

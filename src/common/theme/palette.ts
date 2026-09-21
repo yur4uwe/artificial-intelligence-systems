@@ -82,6 +82,21 @@ export interface ThemePalette {
                 glow: string;
                 text: string;
             };
+            secondWave: {
+                fillGradientStart: string;
+                fillGradientEnd: string;
+                stroke: string;
+                glow: string;
+                badgeBg: string;
+                text: string;
+            };
+            wall: {
+                fillGradientStart: string;
+                fillGradientEnd: string;
+                stroke: string;
+                strokeHover: string;
+                text: string;
+            };
         };
     };
 }
@@ -157,5 +172,7 @@ export function applyThemeToCss(theme: ThemePalette = currentTheme): void {
     root.style.setProperty('--color-node-queue', theme.graph.nodes.inQueue.stroke);
     root.style.setProperty('--color-node-visited', theme.graph.nodes.visited.stroke);
     root.style.setProperty('--color-node-path', theme.graph.nodes.path.stroke);
+    root.style.setProperty('--color-node-second-wave', theme.graph.nodes.secondWave.stroke);
+    root.style.setProperty('--color-node-wall', theme.graph.nodes.wall.fillGradientStart);
     root.style.setProperty('--color-graph-bg', theme.graph.background);
 }

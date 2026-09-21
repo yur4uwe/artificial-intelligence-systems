@@ -101,7 +101,7 @@ ais/
 │   │   ├── maze/                       # Labs 3 & 4: Unidirectional & Bidirectional Wave (Lee)
 │   │   │   ├── drawing/
 │   │   │   │   ├── grid-renderer.ts    # HTML5 Canvas grid visualizer & interactions
-│   │   │   │   └── render-tokens.ts    # Colors for cells, wavefronts, walls, start/goal
+│   │   │   │   └── render-primitives.ts# Drawing routines for cells, path polylines, rulers
 │   │   │   ├── ui/
 │   │   │   │   ├── params-tab.html     # Maze parameters sidebar template
 │   │   │   │   ├── params-tab.ts       # Maze parameters controller

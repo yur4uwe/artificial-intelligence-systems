@@ -286,7 +286,6 @@ export default class WaveBiAlgorithm extends BaseMazeSearch {
 
             for (const neighbor of unvisitedNeighbors) {
                 const nKey = coordKey(neighbor)
-                if (activeVisited.has(nKey)) continue
 
                 const nextDist = currentDist + 1
                 activeVisited.add(nKey)

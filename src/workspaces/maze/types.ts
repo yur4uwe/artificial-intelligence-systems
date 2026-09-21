@@ -1,7 +1,5 @@
 import { GridCoord } from '@/algorithms/maze/types'
 
-export type CanvasInteractionMode = 'toggle-wall' | 'set-start' | 'set-goal'
-
 export interface GridDimensions {
     rows: number
     cols: number
@@ -12,8 +10,8 @@ export interface MazePreset {
     name: string
     rows: number
     cols: number
-    start: GridCoord
-    goal: GridCoord
+    start?: GridCoord
+    goal?: GridCoord
     grid: number[][] // 0: passable, -1: wall
 }
 

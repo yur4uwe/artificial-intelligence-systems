@@ -8,16 +8,17 @@ import { MazeParamsTab, MazeAlgorithmType } from './ui/params-tab'
 import { MAZE_PRESETS, PRESET_15_CLASSIC } from './presets'
 import { exportMazeMetricsToCSV } from './export-utils'
 import {
-    GridCoord,
     MazeMetrics,
     MazeStepEvent,
     TransitionOperator,
-    coordKey,
     parseCoordKey,
 } from '@/algorithms/maze/types'
 import { BaseMazeSearch } from '@/algorithms/maze/base'
 import WaveUniAlgorithm from '@/algorithms/maze/wave-uni'
 import WaveBiAlgorithm from '@/algorithms/maze/wave-bi'
+
+import { ContextMenu, ContextMenuItem } from '@common/ui/context-menu'
+import { MazeContextMenuEvent } from './drawing/grid-renderer'
 
 export default class MazeWorkspace implements WorkspaceModule {
     public id = 'maze-workspace'
@@ -29,6 +30,7 @@ export default class MazeWorkspace implements WorkspaceModule {
     private playbackBar!: PlaybackBar
     private metricsPanel!: MazeMetricsPanel
     private paramsTab!: MazeParamsTab
+    private contextMenu!: ContextMenu
 
     private activeAlgorithmType: MazeAlgorithmType = 'wave-uni'
     private activeOperator: TransitionOperator = 'orthogonal'
@@ -38,19 +40,21 @@ export default class MazeWorkspace implements WorkspaceModule {
     public async mount(context: WorkspaceContext): Promise<void> {
         this.context = context
 
-        // 1. Initialize Maze Model with 15x15 Classic preset
+        // 1. Initialize Maze Model with 15x15 Classic preset (start and goal unset)
         this.model = new MazeModel(
             PRESET_15_CLASSIC.rows,
             PRESET_15_CLASSIC.cols,
-            PRESET_15_CLASSIC.start,
-            PRESET_15_CLASSIC.goal
+            null,
+            null
         )
         this.model.loadPreset(PRESET_15_CLASSIC)
 
-        // 2. Initialize Canvas Renderer
+        // 2. Initialize Canvas Renderer & Context Menu
+        this.contextMenu = new ContextMenu()
         this.renderer = new GridRenderer(this.context.canvas, this.model, {
             onCellClick: () => this.handleCellClick(),
             onModelChange: () => this.handleModelChange(),
+            onContextMenu: (e) => this.handleContextMenu(e),
         })
 
         // 3. Initialize Search Runner Engine
@@ -68,6 +72,12 @@ export default class MazeWorkspace implements WorkspaceModule {
             canPlay: () => {
                 const start = this.model.getStart()
                 const goal = this.model.getGoal()
+                if (start === null || goal === null) {
+                    alert(
+                        'Будь ласка, виберіть початкову (Start) та цільову (Goal) клітинки!'
+                    )
+                    return false
+                }
                 if (this.model.isWall(start.r, start.c)) {
                     alert('Початкова точка не може бути стіною!')
                     return false
@@ -117,36 +127,12 @@ export default class MazeWorkspace implements WorkspaceModule {
                 this.updateAlgorithm()
                 this.renderer.zoomToFit()
             },
-            onInteractionModeChange: (mode) => {
-                this.renderer.setMode(mode)
-            },
             onSwapStartGoal: () => {
                 this.model.swapStartGoal()
                 this.runner.reset()
                 this.syncUIState()
                 this.updateAlgorithm()
                 this.renderer.requestRender()
-            },
-            onRandomizeWalls: () => {
-                this.model.randomizeWalls(0.25)
-                this.runner.reset()
-                this.updateAlgorithm()
-                this.renderer.requestRender()
-            },
-            onClearWalls: () => {
-                this.model.clearWalls()
-                this.runner.reset()
-                this.updateAlgorithm()
-                this.renderer.requestRender()
-            },
-            onInvertWalls: () => {
-                this.model.invertWalls()
-                this.runner.reset()
-                this.updateAlgorithm()
-                this.renderer.requestRender()
-            },
-            onFitView: () => {
-                this.renderer.zoomToFit()
             },
         })
 
@@ -166,6 +152,7 @@ export default class MazeWorkspace implements WorkspaceModule {
 
     public unmount(): void {
         this.runner.reset()
+        this.contextMenu.destroy()
         this.renderer.destroy()
     }
 
@@ -224,10 +211,19 @@ export default class MazeWorkspace implements WorkspaceModule {
     // --- Internal Handlers ---
 
     private updateAlgorithm(): void {
+        const start = this.model.getStart()
+        const goal = this.model.getGoal()
+
+        if (start === null || goal === null) {
+            this.activeAlgorithm = null
+            this.runner.setAlgorithm(null)
+            return
+        }
+
         const options = {
             grid: this.model.getGrid(),
-            start: this.model.getStart(),
-            goal: this.model.getGoal(),
+            start,
+            goal,
             operator: this.activeOperator,
         }
 
@@ -251,12 +247,6 @@ export default class MazeWorkspace implements WorkspaceModule {
     }
 
     private handleCellClick(): void {
-        // Return interaction mode back to toggle-wall if a point was placed
-        const mode = this.renderer.getMode()
-        if (mode === 'set-start' || mode === 'set-goal') {
-            this.renderer.setMode('toggle-wall')
-            this.paramsTab.setInteractionMode('toggle-wall')
-        }
         this.runner.reset()
         this.syncUIState()
         this.updateAlgorithm()
@@ -264,7 +254,95 @@ export default class MazeWorkspace implements WorkspaceModule {
 
     private handleModelChange(): void {
         this.runner.reset()
+        this.syncUIState()
         this.updateAlgorithm()
+        this.renderer.requestRender()
+    }
+
+    private handleContextMenu(e: MazeContextMenuEvent): void {
+        const cell = e.cell
+        let menuItems: ContextMenuItem[] = []
+
+        if (cell) {
+            const isWall = this.model.isWall(cell.r, cell.c)
+            const isStart =
+                this.model.getStart()?.r === cell.r &&
+                this.model.getStart()?.c === cell.c
+            const isGoal =
+                this.model.getGoal()?.r === cell.r &&
+                this.model.getGoal()?.c === cell.c
+
+            menuItems.push(
+                {
+                    label: isStart ? 'Скинути Start' : 'Встановити як Start',
+                    action: () => {
+                        this.model.setStart(
+                            isStart ? null : cell.r,
+                            isStart ? null : cell.c
+                        )
+                        this.handleModelChange()
+                    },
+                },
+                {
+                    label: isGoal ? 'Скинути Goal' : 'Встановити як Goal',
+                    action: () => {
+                        this.model.setGoal(
+                            isGoal ? null : cell.r,
+                            isGoal ? null : cell.c
+                        )
+                        this.handleModelChange()
+                    },
+                },
+                {
+                    divider: true,
+                    label: isWall ? 'Зробити проходом' : 'Зробити стіною',
+                    action: () => {
+                        this.model.setWallState(cell.r, cell.c, !isWall)
+                        this.handleModelChange()
+                    },
+                },
+                {
+                    divider: true,
+                    label: 'Центрувати сітку',
+                    action: () => this.renderer.zoomToFit(),
+                },
+                {
+                    label: 'Скинути масштаб (1:1)',
+                    action: () => this.renderer.resetZoom(),
+                },
+                {
+                    divider: true,
+                    danger: true,
+                    label: 'Очистити всі стіни',
+                    action: () => {
+                        this.model.clearWalls()
+                        this.handleModelChange()
+                    },
+                }
+            )
+        } else {
+            menuItems = [
+                {
+                    label: 'Центрувати сітку',
+                    action: () => this.renderer.zoomToFit(),
+                },
+                {
+                    label: 'Скинути масштаб (1:1)',
+                    action: () => this.renderer.resetZoom(),
+                },
+                {
+                    divider: true,
+                    danger: true,
+                    label: 'Очистити всі стіни',
+                    action: () => {
+                        this.model.clearWalls()
+                        this.handleModelChange()
+                    },
+                },
+            ]
+        }
+
+        this.contextMenu.show(e.clientX, e.clientY, menuItems)
     }
 
     private handleStep(event: MazeStepEvent): void {
@@ -281,7 +359,9 @@ export default class MazeWorkspace implements WorkspaceModule {
         if (event.backwardDistances) {
             for (const [key, dist] of Object.entries(event.backwardDistances)) {
                 const coord = parseCoordKey(key)
-                this.model.setVisualInfo(coord.r, coord.c, { backwardDist: dist })
+                this.model.setVisualInfo(coord.r, coord.c, {
+                    backwardDist: dist,
+                })
             }
         }
 
@@ -308,6 +388,7 @@ export default class MazeWorkspace implements WorkspaceModule {
 
         // 7. Mark path cells if found
         if (event.foundPath) {
+            this.model.setPath(event.foundPath)
             for (const p of event.foundPath) {
                 this.model.setVisualInfo(p.r, p.c, { isPath: true })
             }
@@ -330,6 +411,7 @@ export default class MazeWorkspace implements WorkspaceModule {
 
     private handleReset(): void {
         this.lastMetrics = null
+        this.model.setPath(null)
         this.model.resetVisualInfo()
         this.renderer.requestRender()
         this.metricsPanel.reset()

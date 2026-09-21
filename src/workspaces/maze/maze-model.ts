@@ -1,4 +1,4 @@
-import { GridCoord, coordKey } from '@/algorithms/maze/types'
+import { GridCoord } from '@/algorithms/maze/types'
 import { CellVisualInfo, MazePreset } from './types'
 
 export type ModelChangeListener = () => void
@@ -7,22 +7,23 @@ export class MazeModel {
     private rows: number
     private cols: number
     private grid: number[][] // 0: passable, -1: wall
-    private start: GridCoord
-    private goal: GridCoord
+    private start: GridCoord | null = null
+    private goal: GridCoord | null = null
     private visualInfo = new Map<string, CellVisualInfo>()
     private version: number = 0
     private listeners: ModelChangeListener[] = []
+    private currentPath: GridCoord[] | null = null
 
     constructor(
         rows: number = 15,
         cols: number = 15,
-        start: GridCoord = { r: 1, c: 1 },
-        goal: GridCoord = { r: 13, c: 13 }
+        start: GridCoord | null = null,
+        goal: GridCoord | null = null
     ) {
         this.rows = rows
         this.cols = cols
-        this.start = { ...start }
-        this.goal = { ...goal }
+        this.start = start ? { ...start } : null
+        this.goal = goal ? { ...goal } : null
         this.grid = Array.from({ length: rows }, () => Array(cols).fill(0))
     }
 
@@ -57,12 +58,12 @@ export class MazeModel {
         return this.grid.map((row) => [...row])
     }
 
-    public getStart(): GridCoord {
-        return { ...this.start }
+    public getStart(): GridCoord | null {
+        return this.start ? { ...this.start } : null
     }
 
-    public getGoal(): GridCoord {
-        return { ...this.goal }
+    public getGoal(): GridCoord | null {
+        return this.goal ? { ...this.goal } : null
     }
 
     public isWall(r: number, c: number): boolean {
@@ -70,25 +71,33 @@ export class MazeModel {
         return this.grid[r][c] === -1
     }
 
-    public setStart(r: number, c: number): void {
-        if (r < 0 || r >= this.rows || c < 0 || c >= this.cols) return
-        this.start = { r, c }
-        this.grid[r][c] = 0 // ensure start is passable
+    public setStart(r: number | null, c: number | null): void {
+        if (r === null || c === null) {
+            this.start = null
+        } else {
+            if (r < 0 || r >= this.rows || c < 0 || c >= this.cols) return
+            this.start = { r, c }
+            this.grid[r][c] = 0 // ensure start is passable
+        }
         this.resetVisualInfo()
         this.notifyChange()
     }
 
-    public setGoal(r: number, c: number): void {
-        if (r < 0 || r >= this.rows || c < 0 || c >= this.cols) return
-        this.goal = { r, c }
-        this.grid[r][c] = 0 // ensure goal is passable
+    public setGoal(r: number | null, c: number | null): void {
+        if (r === null || c === null) {
+            this.goal = null
+        } else {
+            if (r < 0 || r >= this.rows || c < 0 || c >= this.cols) return
+            this.goal = { r, c }
+            this.grid[r][c] = 0 // ensure goal is passable
+        }
         this.resetVisualInfo()
         this.notifyChange()
     }
 
     public swapStartGoal(): void {
-        const tmp = { ...this.start }
-        this.start = { ...this.goal }
+        const tmp = this.start
+        this.start = this.goal
         this.goal = tmp
         this.resetVisualInfo()
         this.notifyChange()
@@ -97,8 +106,8 @@ export class MazeModel {
     public toggleWall(r: number, c: number): void {
         if (r < 0 || r >= this.rows || c < 0 || c >= this.cols) return
         if (
-            (r === this.start.r && c === this.start.c) ||
-            (r === this.goal.r && c === this.goal.c)
+            (this.start && r === this.start.r && c === this.start.c) ||
+            (this.goal && r === this.goal.r && c === this.goal.c)
         ) {
             return
         }
@@ -111,8 +120,8 @@ export class MazeModel {
     public setWallState(r: number, c: number, isWall: boolean): void {
         if (r < 0 || r >= this.rows || c < 0 || c >= this.cols) return
         if (
-            (r === this.start.r && c === this.start.c) ||
-            (r === this.goal.r && c === this.goal.c)
+            (this.start && r === this.start.r && c === this.start.c) ||
+            (this.goal && r === this.goal.r && c === this.goal.c)
         ) {
             return
         }
@@ -141,17 +150,21 @@ export class MazeModel {
         this.cols = clampedCols
         this.grid = newGrid
 
-        // Ensure start and goal within bounds
-        this.start = {
-            r: Math.min(this.start.r, this.rows - 1),
-            c: Math.min(this.start.c, this.cols - 1),
+        // Bounds check start and goal
+        if (
+            this.start &&
+            (this.start.r >= this.rows || this.start.c >= this.cols)
+        ) {
+            this.start = null
         }
-        this.goal = {
-            r: Math.min(this.goal.r, this.rows - 1),
-            c: Math.min(this.goal.c, this.cols - 1),
+        if (
+            this.goal &&
+            (this.goal.r >= this.rows || this.goal.c >= this.cols)
+        ) {
+            this.goal = null
         }
-        this.grid[this.start.r][this.start.c] = 0
-        this.grid[this.goal.r][this.goal.c] = 0
+        if (this.start) this.grid[this.start.r][this.start.c] = 0
+        if (this.goal) this.grid[this.goal.r][this.goal.c] = 0
 
         this.resetVisualInfo()
         this.notifyChange()
@@ -167,45 +180,11 @@ export class MazeModel {
         this.notifyChange()
     }
 
-    public randomizeWalls(density: number = 0.25): void {
-        for (let r = 0; r < this.rows; r++) {
-            for (let c = 0; c < this.cols; c++) {
-                if (
-                    (r === this.start.r && c === this.start.c) ||
-                    (r === this.goal.r && c === this.goal.c)
-                ) {
-                    this.grid[r][c] = 0
-                } else {
-                    this.grid[r][c] = Math.random() < density ? -1 : 0
-                }
-            }
-        }
-        this.resetVisualInfo()
-        this.notifyChange()
-    }
-
-    public invertWalls(): void {
-        for (let r = 0; r < this.rows; r++) {
-            for (let c = 0; c < this.cols; c++) {
-                if (
-                    (r === this.start.r && c === this.start.c) ||
-                    (r === this.goal.r && c === this.goal.c)
-                ) {
-                    this.grid[r][c] = 0
-                } else {
-                    this.grid[r][c] = this.grid[r][c] === 0 ? -1 : 0
-                }
-            }
-        }
-        this.resetVisualInfo()
-        this.notifyChange()
-    }
-
     public loadPreset(preset: MazePreset): void {
         this.rows = preset.rows
         this.cols = preset.cols
-        this.start = { ...preset.start }
-        this.goal = { ...preset.goal }
+        this.start = null
+        this.goal = null
         this.grid = preset.grid.map((row) => [...row])
         this.resetVisualInfo()
         this.notifyChange()
@@ -228,16 +207,33 @@ export class MazeModel {
         return this.visualInfo.get(`${r},${c}`)
     }
 
-    public setVisualInfo(r: number, c: number, info: Partial<CellVisualInfo>): void {
+    public setVisualInfo(
+        r: number,
+        c: number,
+        info: Partial<CellVisualInfo>
+    ): void {
         const key = `${r},${c}`
         const existing = this.visualInfo.get(key) || {}
         this.visualInfo.set(key, { ...existing, ...info })
     }
 
+    public setPath(path: GridCoord[] | null): void {
+        this.currentPath = path ? [...path] : null
+    }
+
+    public getPath(): GridCoord[] | null {
+        return this.currentPath
+    }
+
     public resetVisualInfo(): void {
         this.visualInfo.clear()
-        // Initialize start and goal indicators
-        this.setVisualInfo(this.start.r, this.start.c, { isStart: true })
-        this.setVisualInfo(this.goal.r, this.goal.c, { isGoal: true })
+        this.currentPath = null
+        // Initialize start and goal indicators if set
+        if (this.start) {
+            this.setVisualInfo(this.start.r, this.start.c, { isStart: true })
+        }
+        if (this.goal) {
+            this.setVisualInfo(this.goal.r, this.goal.c, { isGoal: true })
+        }
     }
 }

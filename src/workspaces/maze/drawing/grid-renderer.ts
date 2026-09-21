@@ -1,11 +1,18 @@
 import { MazeModel } from '../maze-model'
-import { CanvasInteractionMode } from '../types'
-import { DEFAULT_MAZE_TOKENS, MazeRenderTokens } from './render-tokens'
 import { GridCoord } from '@/algorithms/maze/types'
+import { getActiveTheme, onThemeChange } from '@common/theme/palette'
+import { drawCell, drawGridRulers, drawPathPolyline } from './render-primitives'
+
+export interface MazeContextMenuEvent {
+    clientX: number
+    clientY: number
+    cell: GridCoord | null
+}
 
 export interface GridRendererCallbacks {
     onCellClick?: (coord: GridCoord) => void
     onModelChange?: () => void
+    onContextMenu?: (e: MazeContextMenuEvent) => void
 }
 
 export class GridRenderer {
@@ -13,26 +20,27 @@ export class GridRenderer {
     private ctx: CanvasRenderingContext2D
     private model: MazeModel
     private callbacks: GridRendererCallbacks
-    private tokens: MazeRenderTokens = DEFAULT_MAZE_TOKENS
+    private unsubscribeTheme?: () => void
 
-    private mode: CanvasInteractionMode = 'toggle-wall'
-    private isMouseDown: boolean = false
-    private drawWallValue: boolean = true // true = draw wall, false = erase wall
     private hoveredCell: GridCoord | null = null
 
-    // Transform
-    private zoom: number = 1
-    private panX: number = 0
-    private panY: number = 0
-    private cellSize: number = 32
-    private originX: number = 0
-    private originY: number = 0
+    // Viewport transform (Pan, Zoom, DPR)
+    private pan: { x: number; y: number } = { x: 0, y: 0 }
+    private zoom: number = 1.0
+    private dpr: number = 1
+    private cellSize: number = 36
+
+    // Pan state
+    private isPanning: boolean = false
+    private panStart: { x: number; y: number } = { x: 0, y: 0 }
+    private isSpaceDown: boolean = false
 
     private animFrameId: number | null = null
     private boundListeners: Array<{
         target: EventTarget
         type: string
         listener: EventListener
+        options?: boolean | AddEventListenerOptions
     }> = []
 
     constructor(
@@ -41,13 +49,17 @@ export class GridRenderer {
         callbacks: GridRendererCallbacks = {}
     ) {
         this.canvas = canvas
-        this.ctx = canvas.getContext('2d', { alpha: false })!
+        this.ctx = canvas.getContext('2d')!
         this.model = model
         this.callbacks = callbacks
 
         this.initEvents()
         this.resize()
         this.zoomToFit()
+
+        this.unsubscribeTheme = onThemeChange(() => {
+            this.requestRender()
+        })
     }
 
     public setModel(model: MazeModel): void {
@@ -56,69 +68,76 @@ export class GridRenderer {
         this.requestRender()
     }
 
-    public setMode(mode: CanvasInteractionMode): void {
-        this.mode = mode
-        this.canvas.style.cursor =
-            mode === 'toggle-wall' ? 'pointer' : 'crosshair'
-    }
-
-    public getMode(): CanvasInteractionMode {
-        return this.mode
-    }
-
     public getCanvasElement(): HTMLCanvasElement {
         return this.canvas
     }
 
     public resize(): void {
-        const rect = this.canvas.parentElement?.getBoundingClientRect()
-        const width = rect?.width || 800
-        const height = rect?.height || 600
-        const dpr = window.devicePixelRatio || 1
-
-        this.canvas.width = Math.floor(width * dpr)
-        this.canvas.height = Math.floor(height * dpr)
-        this.canvas.style.width = `${width}px`
-        this.canvas.style.height = `${height}px`
-
-        this.ctx.setTransform(1, 0, 0, 1, 0, 0)
-        this.ctx.scale(dpr, dpr)
-
-        this.zoomToFit()
+        this.dpr = window.devicePixelRatio || 1
+        const rect = this.canvas.getBoundingClientRect()
+        this.canvas.width = Math.floor(rect.width * this.dpr)
+        this.canvas.height = Math.floor(rect.height * this.dpr)
         this.requestRender()
     }
 
+    /**
+     * Scale and center the maze grid in the visible viewport,
+     * specifically accounting for the floating bottom playback controller.
+     */
     public zoomToFit(): void {
         const rect = this.canvas.getBoundingClientRect()
         const width = rect.width
         const height = rect.height
+        if (width === 0 || height === 0) return
 
         const rows = this.model.getRows()
         const cols = this.model.getCols()
 
-        const padding = 48
-        const availableW = Math.max(100, width - padding * 2)
-        const availableH = Math.max(100, height - padding * 2)
+        // Reserve space for top rulers & bottom floating playback bar
+        const bottomBarHeight = 90
+        const paddingTop = 44
+        const paddingBottom = bottomBarHeight + 16
+        const paddingX = 48
 
-        const rawCellSize = Math.floor(
-            Math.min(availableW / cols, availableH / rows)
-        )
-        this.cellSize = Math.max(16, Math.min(64, rawCellSize))
+        const availableW = Math.max(100, width - paddingX * 2)
+        const availableH = Math.max(100, height - paddingTop - paddingBottom)
 
-        const gridW = cols * this.cellSize
-        const gridH = rows * this.cellSize
+        this.cellSize = 36
+        const totalGridW = cols * this.cellSize
+        const totalGridH = rows * this.cellSize
 
-        this.originX = Math.floor((width - gridW) / 2)
-        this.originY = Math.floor((height - gridH) / 2)
-        this.zoom = 1
-        this.panX = 0
-        this.panY = 0
+        const scaleX = availableW / totalGridW
+        const scaleY = availableH / totalGridH
+        this.zoom = Math.min(Math.max(Math.min(scaleX, scaleY), 0.25), 2.2)
+
+        // Center vertically in the visible portion above the playback bar
+        const visibleCenterY = (paddingTop + (height - paddingBottom)) / 2
+        this.pan = {
+            x: Math.round(width / 2 - (totalGridW * this.zoom) / 2),
+            y: Math.round(visibleCenterY - (totalGridH * this.zoom) / 2),
+        }
 
         this.requestRender()
     }
 
     public resetView(): void {
         this.zoomToFit()
+    }
+
+    public resetZoom(): void {
+        this.zoom = 1.0
+        const rect = this.canvas.getBoundingClientRect()
+        const totalGridW = this.model.getCols() * this.cellSize
+        const totalGridH = this.model.getRows() * this.cellSize
+        const bottomBarHeight = 90
+        const paddingTop = 44
+        const paddingBottom = bottomBarHeight + 16
+        const visibleCenterY = (paddingTop + (rect.height - paddingBottom)) / 2
+        this.pan = {
+            x: Math.round(rect.width / 2 - totalGridW / 2),
+            y: Math.round(visibleCenterY - totalGridH / 2),
+        }
+        this.requestRender()
     }
 
     public requestRender(): void {
@@ -129,37 +148,26 @@ export class GridRenderer {
         })
     }
 
-    private initEvents(): void {
-        const onPointerDown = (e: PointerEvent) => this.handlePointerDown(e)
-        const onPointerMove = (e: PointerEvent) => this.handlePointerMove(e)
-        const onPointerUp = (e: PointerEvent) => this.handlePointerUp(e)
-        const onPointerLeave = () => this.handlePointerLeave()
+    // --- Coordinate Transforms ---
 
-        this.canvas.addEventListener('pointerdown', onPointerDown)
-        window.addEventListener('pointermove', onPointerMove)
-        window.addEventListener('pointerup', onPointerUp)
-        this.canvas.addEventListener('pointerleave', onPointerLeave)
-
-        this.boundListeners.push(
-            { target: this.canvas, type: 'pointerdown', listener: onPointerDown as EventListener },
-            { target: window, type: 'pointermove', listener: onPointerMove as EventListener },
-            { target: window, type: 'pointerup', listener: onPointerUp as EventListener },
-            { target: this.canvas, type: 'pointerleave', listener: onPointerLeave as EventListener }
-        )
+    public screenToWorld(
+        screenX: number,
+        screenY: number
+    ): { x: number; y: number } {
+        return {
+            x: (screenX - this.pan.x) / this.zoom,
+            y: (screenY - this.pan.y) / this.zoom,
+        }
     }
 
-    private clientToGrid(clientX: number, clientY: number): GridCoord | null {
+    public clientToGrid(clientX: number, clientY: number): GridCoord | null {
         const rect = this.canvas.getBoundingClientRect()
-        const mouseX = clientX - rect.left
-        const mouseY = clientY - rect.top
+        const screenX = clientX - rect.left
+        const screenY = clientY - rect.top
+        const world = this.screenToWorld(screenX, screenY)
 
-        const xInGrid = mouseX - this.originX
-        const yInGrid = mouseY - this.originY
-
-        if (xInGrid < 0 || yInGrid < 0) return null
-
-        const c = Math.floor(xInGrid / this.cellSize)
-        const r = Math.floor(yInGrid / this.cellSize)
+        const c = Math.floor(world.x / this.cellSize)
+        const r = Math.floor(world.y / this.cellSize)
 
         if (
             r >= 0 &&
@@ -172,53 +180,150 @@ export class GridRenderer {
         return null
     }
 
-    private handlePointerDown(e: PointerEvent): void {
-        if (e.button !== 0) return // Left click only
-        this.canvas.setPointerCapture(e.pointerId)
-        this.isMouseDown = true
+    // --- Event Listeners ---
 
+    private initEvents(): void {
+        const onPointerDown = (e: PointerEvent) => this.handlePointerDown(e)
+        const onPointerMove = (e: PointerEvent) => this.handlePointerMove(e)
+        const onPointerUp = (e: PointerEvent) => this.handlePointerUp(e)
+        const onPointerLeave = () => this.handlePointerLeave()
+        const onContextMenu = (e: MouseEvent) => this.handleContextMenu(e)
+        const onWheel = (e: WheelEvent) => this.handleWheel(e)
+        const onKeyDown = (e: KeyboardEvent) => this.handleKeyDown(e)
+        const onKeyUp = (e: KeyboardEvent) => this.handleKeyUp(e)
+
+        this.canvas.addEventListener('pointerdown', onPointerDown)
+        window.addEventListener('pointermove', onPointerMove)
+        window.addEventListener('pointerup', onPointerUp)
+        this.canvas.addEventListener('pointerleave', onPointerLeave)
+        this.canvas.addEventListener('contextmenu', onContextMenu)
+        this.canvas.addEventListener('wheel', onWheel, { passive: false })
+        window.addEventListener('keydown', onKeyDown)
+        window.addEventListener('keyup', onKeyUp)
+
+        this.boundListeners.push(
+            {
+                target: this.canvas,
+                type: 'pointerdown',
+                listener: onPointerDown as EventListener,
+            },
+            {
+                target: window,
+                type: 'pointermove',
+                listener: onPointerMove as EventListener,
+            },
+            {
+                target: window,
+                type: 'pointerup',
+                listener: onPointerUp as EventListener,
+            },
+            {
+                target: this.canvas,
+                type: 'pointerleave',
+                listener: onPointerLeave as EventListener,
+            },
+            {
+                target: this.canvas,
+                type: 'contextmenu',
+                listener: onContextMenu as EventListener,
+            },
+            {
+                target: this.canvas,
+                type: 'wheel',
+                listener: onWheel as EventListener,
+                options: { passive: false },
+            },
+            {
+                target: window,
+                type: 'keydown',
+                listener: onKeyDown as EventListener,
+            },
+            {
+                target: window,
+                type: 'keyup',
+                listener: onKeyUp as EventListener,
+            }
+        )
+    }
+
+    private handleContextMenu(e: MouseEvent): void {
+        e.preventDefault()
         const cell = this.clientToGrid(e.clientX, e.clientY)
-        if (!cell) return
+        this.callbacks.onContextMenu?.({
+            clientX: e.clientX,
+            clientY: e.clientY,
+            cell,
+        })
+    }
 
-        if (this.mode === 'set-start') {
-            this.model.setStart(cell.r, cell.c)
-            this.callbacks.onCellClick?.(cell)
-            this.requestRender()
+    private handlePointerDown(e: PointerEvent): void {
+        const rect = this.canvas.getBoundingClientRect()
+        const screenX = e.clientX - rect.left
+        const screenY = e.clientY - rect.top
+        const cell = this.clientToGrid(e.clientX, e.clientY)
+
+        // Panning condition:
+        // 1. Middle button (button === 1)
+        // 2. Shift + Left button
+        // 3. Space key is held down
+        // 4. Click outside the grid cells
+        const wantsPan =
+            e.button === 1 ||
+            (e.button === 0 && e.shiftKey) ||
+            (e.button === 0 && this.isSpaceDown) ||
+            (e.button === 0 && cell === null)
+
+        if (wantsPan) {
+            this.isPanning = true
+            this.panStart = {
+                x: screenX - this.pan.x,
+                y: screenY - this.pan.y,
+            }
+            this.canvas.setPointerCapture(e.pointerId)
+            this.canvas.style.cursor = 'grabbing'
             return
         }
 
-        if (this.mode === 'set-goal') {
-            this.model.setGoal(cell.r, cell.c)
-            this.callbacks.onCellClick?.(cell)
-            this.requestRender()
-            return
-        }
+        if (e.button !== 0 || !cell) return
 
-        // Mode: toggle-wall
+        this.canvas.setPointerCapture(e.pointerId)
+
         const isCurrentlyWall = this.model.isWall(cell.r, cell.c)
-        this.drawWallValue = !isCurrentlyWall
-        this.model.setWallState(cell.r, cell.c, this.drawWallValue)
+        this.model.setWallState(cell.r, cell.c, !isCurrentlyWall)
         this.callbacks.onModelChange?.()
         this.requestRender()
     }
 
     private handlePointerMove(e: PointerEvent): void {
+        const rect = this.canvas.getBoundingClientRect()
+        const screenX = e.clientX - rect.left
+        const screenY = e.clientY - rect.top
+
+        if (this.isPanning) {
+            this.pan = {
+                x: screenX - this.panStart.x,
+                y: screenY - this.panStart.y,
+            }
+            this.requestRender()
+            return
+        }
+
         const cell = this.clientToGrid(e.clientX, e.clientY)
         this.hoveredCell = cell
-
-        if (this.isMouseDown && this.mode === 'toggle-wall' && cell) {
-            this.model.setWallState(cell.r, cell.c, this.drawWallValue)
-            this.callbacks.onModelChange?.()
-        }
 
         this.requestRender()
     }
 
     private handlePointerUp(e: PointerEvent): void {
-        this.isMouseDown = false
+        if (this.isPanning) {
+            this.isPanning = false
+            this.canvas.style.cursor = 'crosshair'
+        }
+
         try {
             this.canvas.releasePointerCapture(e.pointerId)
         } catch {}
+        this.requestRender()
     }
 
     private handlePointerLeave(): void {
@@ -226,17 +331,60 @@ export class GridRenderer {
         this.requestRender()
     }
 
-    // --- Rendering Logic ---
+    private handleWheel(e: WheelEvent): void {
+        e.preventDefault()
+        const rect = this.canvas.getBoundingClientRect()
+        const mouseX = e.clientX - rect.left
+        const mouseY = e.clientY - rect.top
+
+        const zoomFactor = e.deltaY < 0 ? 1.12 : 0.88
+        const newZoom = Math.min(Math.max(this.zoom * zoomFactor, 0.2), 3.5)
+
+        // Zoom centered towards mouse pointer
+        this.pan.x = mouseX - (mouseX - this.pan.x) * (newZoom / this.zoom)
+        this.pan.y = mouseY - (mouseY - this.pan.y) * (newZoom / this.zoom)
+        this.zoom = newZoom
+
+        this.requestRender()
+    }
+
+    private handleKeyDown(e: KeyboardEvent): void {
+        if (e.code === 'Space' && !this.isSpaceDown) {
+            this.isSpaceDown = true
+            if (!this.isPanning) {
+                this.canvas.style.cursor = 'grab'
+            }
+        }
+    }
+
+    private handleKeyUp(e: KeyboardEvent): void {
+        if (e.code === 'Space') {
+            this.isSpaceDown = false
+            if (!this.isPanning) {
+                this.canvas.style.cursor = 'crosshair'
+            }
+        }
+    }
+
+    // --- Rendering Pipeline ---
 
     public render(): void {
-        const rect = this.canvas.getBoundingClientRect()
-        const width = rect.width
-        const height = rect.height
+        const width = this.canvas.clientWidth
+        const height = this.canvas.clientHeight
         const ctx = this.ctx
+        const theme = getActiveTheme()
 
         ctx.save()
-        ctx.fillStyle = this.tokens.background
+        ctx.scale(this.dpr, this.dpr)
+
+        // Canvas Background identical to graph workspace
+        ctx.fillStyle = theme.graph.background
         ctx.fillRect(0, 0, width, height)
+
+        // Viewport Transform (Pan & Zoom)
+        ctx.save()
+        ctx.translate(this.pan.x, this.pan.y)
+        ctx.scale(this.zoom, this.zoom)
 
         const rows = this.model.getRows()
         const cols = this.model.getCols()
@@ -244,203 +392,56 @@ export class GridRenderer {
         const goal = this.model.getGoal()
         const cellSize = this.cellSize
 
-        // Draw Row & Column Headers (coordinate indices)
-        ctx.font = '10px ui-monospace, SFMono-Regular, monospace'
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)'
+        // 1. Draw Row & Column Headers (coordinate indices)
+        drawGridRulers(ctx, theme, rows, cols, cellSize)
 
-        // Col headers
-        for (let c = 0; c < cols; c++) {
-            const x = this.originX + c * cellSize + cellSize / 2
-            const y = this.originY - 12
-            ctx.fillText(`${c}`, x, y)
-        }
-        // Row headers
-        for (let r = 0; r < rows; r++) {
-            const x = this.originX - 16
-            const y = this.originY + r * cellSize + cellSize / 2
-            ctx.fillText(`${r}`, x, y)
-        }
-
-        // Draw Cells
+        // 2. Draw Cells using render primitives & ThemePalette
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
-                const x = this.originX + c * cellSize
-                const y = this.originY + r * cellSize
+                const x = c * cellSize
+                const y = r * cellSize
                 const isWall = this.model.isWall(r, c)
                 const info = this.model.getVisualInfo(r, c)
-                const isStart = r === start.r && c === start.c
-                const isGoal = r === goal.r && c === goal.c
+                const isStart = start !== null && r === start.r && c === start.c
+                const isGoal = goal !== null && r === goal.r && c === goal.c
 
-                // 1. Cell background
-                if (isWall) {
-                    ctx.fillStyle = this.tokens.cellWall
-                    ctx.fillRect(x + 1, y + 1, cellSize - 2, cellSize - 2)
+                const isHovered =
+                    this.hoveredCell !== null &&
+                    this.hoveredCell.r === r &&
+                    this.hoveredCell.c === c &&
+                    !this.isPanning
 
-                    ctx.strokeStyle = this.tokens.cellWallBorder
-                    ctx.lineWidth = 1
-                    ctx.strokeRect(x + 1, y + 1, cellSize - 2, cellSize - 2)
-                    continue
-                }
-
-                // Passable Cell Base
-                ctx.fillStyle = this.tokens.cellPassable
-                ctx.fillRect(x + 1, y + 1, cellSize - 2, cellSize - 2)
-
-                // 2. Wave Distances & State Fills
-                if (info?.isMeeting) {
-                    ctx.fillStyle = this.tokens.meetingFill
-                    ctx.fillRect(x + 1, y + 1, cellSize - 2, cellSize - 2)
-                } else if (info?.isPath) {
-                    ctx.fillStyle = this.tokens.pathFill
-                    ctx.fillRect(x + 1, y + 1, cellSize - 2, cellSize - 2)
-                } else if (info?.forwardDist !== undefined && info?.backwardDist !== undefined) {
-                    // Both waves reached
-                    ctx.fillStyle = this.tokens.meetingFill
-                    ctx.fillRect(x + 1, y + 1, cellSize - 2, cellSize - 2)
-                } else if (info?.forwardDist !== undefined) {
-                    ctx.fillStyle = this.tokens.waveForwardFill
-                    ctx.fillRect(x + 1, y + 1, cellSize - 2, cellSize - 2)
-                } else if (info?.backwardDist !== undefined) {
-                    ctx.fillStyle = this.tokens.waveBackwardFill
-                    ctx.fillRect(x + 1, y + 1, cellSize - 2, cellSize - 2)
-                }
-
-                // 3. Start / Goal markers
-                if (isStart) {
-                    ctx.fillStyle = this.tokens.startFill
-                    ctx.fillRect(x + 1, y + 1, cellSize - 2, cellSize - 2)
-                } else if (isGoal) {
-                    ctx.fillStyle = this.tokens.goalFill
-                    ctx.fillRect(x + 1, y + 1, cellSize - 2, cellSize - 2)
-                }
-
-                // 4. Cell Border
-                ctx.strokeStyle = this.tokens.gridBorder
-                ctx.lineWidth = 1
-                ctx.strokeRect(x, y, cellSize, cellSize)
-
-                // 5. Active state borders (Current / Frontier)
-                if (info?.isCurrent) {
-                    ctx.strokeStyle = this.tokens.currentStroke
-                    ctx.lineWidth = 2
-                    ctx.strokeRect(x + 2, y + 2, cellSize - 4, cellSize - 4)
-                } else if (info?.isFrontier) {
-                    ctx.strokeStyle = this.tokens.frontierStroke
-                    ctx.lineWidth = 1.5
-                    ctx.strokeRect(x + 2, y + 2, cellSize - 4, cellSize - 4)
-                }
-
-                // 6. Cell Text / Badges
-                const fontSize = Math.max(9, Math.floor(cellSize * 0.38))
-                ctx.font = `600 ${fontSize}px ui-sans-serif, system-ui, sans-serif`
-                ctx.textAlign = 'center'
-                ctx.textBaseline = 'middle'
-
-                if (isStart) {
-                    ctx.fillStyle = this.tokens.startText
-                    ctx.fillText('S', x + cellSize / 2, y + cellSize / 2)
-                } else if (isGoal) {
-                    ctx.fillStyle = this.tokens.goalText
-                    ctx.fillText('G', x + cellSize / 2, y + cellSize / 2)
-                } else if (info?.forwardDist !== undefined && info?.backwardDist !== undefined) {
-                    ctx.fillStyle = this.tokens.meetingText
-                    ctx.fillText(
-                        `${info.forwardDist}|${info.backwardDist}`,
-                        x + cellSize / 2,
-                        y + cellSize / 2
-                    )
-                } else if (info?.forwardDist !== undefined) {
-                    ctx.fillStyle = this.tokens.waveForwardText
-                    ctx.fillText(`${info.forwardDist}`, x + cellSize / 2, y + cellSize / 2)
-                } else if (info?.backwardDist !== undefined) {
-                    ctx.fillStyle = this.tokens.waveBackwardText
-                    ctx.fillText(`${info.backwardDist}`, x + cellSize / 2, y + cellSize / 2)
-                }
+                drawCell(ctx, theme, {
+                    x,
+                    y,
+                    cellSize,
+                    isWall,
+                    isStart,
+                    isGoal,
+                    isHovered,
+                    info,
+                })
             }
         }
 
-        // Draw Connecting Path Line if available
-        this.renderPathPolyline()
-
-        // Draw Hover Box
-        if (this.hoveredCell) {
-            const hx = this.originX + this.hoveredCell.c * cellSize
-            const hy = this.originY + this.hoveredCell.r * cellSize
-            ctx.fillStyle = this.tokens.hoverCell
-            ctx.fillRect(hx, hy, cellSize, cellSize)
-
-            ctx.strokeStyle =
-                this.mode === 'set-start'
-                    ? this.tokens.startStroke
-                    : this.mode === 'set-goal'
-                      ? this.tokens.goalStroke
-                      : 'rgba(255, 255, 255, 0.4)'
-            ctx.lineWidth = 1.5
-            ctx.strokeRect(hx, hy, cellSize, cellSize)
+        // 3. Draw Connecting Path Polyline (identical to graph path edges)
+        const currentPath = this.model.getPath()
+        if (currentPath && currentPath.length > 1) {
+            drawPathPolyline(ctx, theme, currentPath, cellSize)
         }
 
-        ctx.restore()
-    }
-
-    private renderPathPolyline(): void {
-        const rows = this.model.getRows()
-        const cols = this.model.getCols()
-        const pathCoords: GridCoord[] = []
-
-        // Find path coordinates in sequential order if stored
-        for (let r = 0; r < rows; r++) {
-            for (let c = 0; c < cols; c++) {
-                const info = this.model.getVisualInfo(r, c)
-                if (info?.isPath) {
-                    pathCoords.push({ r, c })
-                }
-            }
-        }
-
-        if (pathCoords.length < 2) return
-
-        const ctx = this.ctx
-        const cellSize = this.cellSize
-
-        ctx.save()
-        ctx.strokeStyle = this.tokens.pathLine
-        ctx.lineWidth = Math.max(3, Math.floor(cellSize * 0.14))
-        ctx.lineCap = 'round'
-        ctx.lineJoin = 'round'
-
-        // Connect path segments
-        // We look for adjacent path cells
-        for (let i = 0; i < pathCoords.length; i++) {
-            const a = pathCoords[i]
-            for (let j = i + 1; j < pathCoords.length; j++) {
-                const b = pathCoords[j]
-                const dr = Math.abs(a.r - b.r)
-                const dc = Math.abs(a.c - b.c)
-                if (dr <= 1 && dc <= 1 && !(dr === 0 && dc === 0)) {
-                    const ax = this.originX + a.c * cellSize + cellSize / 2
-                    const ay = this.originY + a.r * cellSize + cellSize / 2
-                    const bx = this.originX + b.c * cellSize + cellSize / 2
-                    const by = this.originY + b.r * cellSize + cellSize / 2
-
-                    ctx.beginPath()
-                    ctx.moveTo(ax, ay)
-                    ctx.lineTo(bx, by)
-                    ctx.stroke()
-                }
-            }
-        }
-        ctx.restore()
+        ctx.restore() // End Pan & Zoom
+        ctx.restore() // End DPR scale
     }
 
     public destroy(): void {
+        this.unsubscribeTheme?.()
         if (this.animFrameId !== null) {
             cancelAnimationFrame(this.animFrameId)
             this.animFrameId = null
         }
-        for (const { target, type, listener } of this.boundListeners) {
-            target.removeEventListener(type, listener)
+        for (const { target, type, listener, options } of this.boundListeners) {
+            target.removeEventListener(type, listener, options)
         }
         this.boundListeners = []
     }

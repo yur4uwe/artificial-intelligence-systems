@@ -81,6 +81,21 @@ export const CALM_MINIMAL_DARK_THEME: ThemePalette = {
                 glow: 'rgba(56, 189, 248, 0.5)',
                 text: '#ffffff',
             },
+            secondWave: {
+                fillGradientStart: '#9333ea',
+                fillGradientEnd: '#581c87',
+                stroke: '#c084fc',
+                glow: 'rgba(192, 132, 252, 0.35)',
+                badgeBg: '#9333ea',
+                text: '#ffffff',
+            },
+            wall: {
+                fillGradientStart: '#1e293b',
+                fillGradientEnd: '#0f172a',
+                stroke: '#334155',
+                strokeHover: '#38bdf8',
+                text: '#64748b',
+            },
         },
     },
 };

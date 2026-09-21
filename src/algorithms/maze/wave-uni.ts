@@ -211,7 +211,6 @@ export default class WaveUniAlgorithm extends BaseMazeSearch {
 
             for (const neighbor of unvisitedNeighbors) {
                 const nKey = coordKey(neighbor)
-                if (visitedSet.has(nKey)) continue
 
                 const nextDist = currentDist + 1
                 visitedSet.add(nKey)
