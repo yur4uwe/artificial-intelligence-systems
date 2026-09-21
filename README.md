@@ -55,11 +55,16 @@ ais/
 ├── reports/                            # Generated laboratory report templates
 ├── src/
 │   ├── algorithms/                     # Generator-based search algorithms
-│   │   └── graph/
-│   │       ├── base.ts                 # BaseGraphSearch generator base class
-│   │       ├── bfs.ts                  # Breadth-First Search implementation
-│   │       ├── dfs.ts                  # Depth-First Search implementation
-│   │       └── common.ts               # Algorithm options, step events, and metric types
+│   │   ├── graph/
+│   │   │   ├── base.ts                 # BaseGraphSearch generator base class
+│   │   │   ├── bfs.ts                  # Breadth-First Search implementation
+│   │   │   ├── dfs.ts                  # Depth-First Search implementation
+│   │   │   └── common.ts               # Algorithm options, step events, and metric types
+│   │   └── maze/                       # Wave search algorithms
+│   │       ├── base.ts                 # BaseMazeSearch generator base class
+│   │       ├── wave-uni.ts             # Lab 3: Unidirectional Lee Wave implementation
+│   │       ├── wave-bi.ts              # Lab 4: Bidirectional Lee Wave implementation
+│   │       └── types.ts                # Transition operators, coordinates, step events
 │   ├── common/                         # Shared utilities, engine, and UI primitives
 │   │   ├── engine/
 │   │   │   └── search-runner.ts        # Step generator runner & playback controller
@@ -94,6 +99,19 @@ ais/
 │   │   │   ├── types.ts                # Graph-specific visual and data types
 │   │   │   └── index.ts                # Graph WorkspaceModule entrypoint
 │   │   ├── maze/                       # Labs 3 & 4: Unidirectional & Bidirectional Wave (Lee)
+│   │   │   ├── drawing/
+│   │   │   │   ├── grid-renderer.ts    # HTML5 Canvas grid visualizer & interactions
+│   │   │   │   └── render-tokens.ts    # Colors for cells, wavefronts, walls, start/goal
+│   │   │   ├── ui/
+│   │   │   │   ├── params-tab.html     # Maze parameters sidebar template
+│   │   │   │   ├── params-tab.ts       # Maze parameters controller
+│   │   │   │   ├── metrics-panel.html  # Maze metrics sidebar template
+│   │   │   │   └── metrics-panel.ts    # Maze metrics controller
+│   │   │   ├── export-utils.ts         # CSV export for laboratory reporting
+│   │   │   ├── maze-model.ts           # Grid state, cell mutations, obstacle ratio
+│   │   │   ├── presets.ts              # Predefined maze orders (10x10, 12x12, 15x15, 20x20)
+│   │   │   ├── types.ts                # Maze-specific types & dimensions
+│   │   │   └── index.ts                # Maze WorkspaceModule entrypoint
 │   │   └── roads/                      # Lab 5: Dijkstra Highway Network of Ukraine
 │   ├── main.ts                         # Application bootstrapper and shell router
 │   ├── style.css                       # Global Tailwind CSS styles and theme variables

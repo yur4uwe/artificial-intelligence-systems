@@ -1,0 +1,80 @@
+<div class="flex flex-col gap-4 text-xs">
+  <!-- Status & Path Card -->
+  <div class="border rounded-xl p-3 shadow-md" style="background-color: var(--color-bg-app); border-color: var(--color-border-subtle);">
+    <div class="flex items-center justify-between mb-2">
+      <span class="font-medium" style="color: var(--color-text-secondary);">Статус пошуку:</span>
+      <span id="mmp-status-badge" class="px-2.5 py-0.5 rounded-full font-semibold text-[11px] border" style="background-color: var(--color-bg-elevated); border-color: var(--color-border-subtle); color: var(--color-text-secondary);">
+        Очікування запуску
+      </span>
+    </div>
+    
+    <div class="rounded-lg p-2.5 border" style="background-color: var(--color-bg-surface); border-color: var(--color-border-subtle);">
+      <span class="block mb-1 font-medium" style="color: var(--color-text-secondary);">Знайдений шлях:</span>
+      <div id="mmp-path-display" class="font-mono text-xs break-words font-medium min-h-[1.5rem]" style="color: var(--color-node-path);">
+        —
+      </div>
+    </div>
+  </div>
+
+  <!-- Metrics Grid -->
+  <div class="grid grid-cols-2 gap-2.5">
+    <div class="border rounded-xl p-2.5" style="background-color: var(--color-bg-app); border-color: var(--color-border-subtle);">
+      <span class="block text-[11px]" style="color: var(--color-text-secondary);">Довжина шляху:</span>
+      <span id="mmp-path-length" class="text-lg font-bold font-mono" style="color: var(--color-text-primary);">0</span>
+      <span class="text-[10px] ml-1" style="color: var(--color-text-muted);">кроків</span>
+    </div>
+
+    <div class="border rounded-xl p-2.5" style="background-color: var(--color-bg-app); border-color: var(--color-border-subtle);">
+      <span class="block text-[11px]" style="color: var(--color-text-secondary);">Розкрито клітинок:</span>
+      <span id="mmp-opened-nodes" class="text-lg font-bold font-mono text-emerald-500">0</span>
+    </div>
+
+    <div class="border rounded-xl p-2.5" style="background-color: var(--color-bg-app); border-color: var(--color-border-subtle);">
+      <span class="block text-[11px]" style="color: var(--color-text-secondary);">Кількість циклів:</span>
+      <span id="mmp-cycles" class="text-lg font-bold font-mono text-amber-500">0</span>
+    </div>
+
+    <div class="border rounded-xl p-2.5" style="background-color: var(--color-bg-app); border-color: var(--color-border-subtle);">
+      <span class="block text-[11px]" style="color: var(--color-text-secondary);">Час виконання:</span>
+      <span id="mmp-exec-time" class="text-lg font-bold font-mono" style="color: var(--color-accent-primary);">0.00</span>
+      <span id="mmp-exec-unit" class="text-[10px] ml-1" style="color: var(--color-text-muted);">мс</span>
+    </div>
+  </div>
+
+  <!-- Lab 4: Bidirectional Meeting & Reduction Card -->
+  <div id="mmp-bi-info-card" class="border rounded-xl p-2.5 hidden" style="background-color: var(--color-bg-app); border-color: var(--color-border-subtle);">
+    <div class="flex items-center justify-between">
+      <div>
+        <span class="block text-[11px]" style="color: var(--color-text-secondary);">Зустріч хвиль:</span>
+        <span id="mmp-meeting-point" class="font-mono font-bold text-amber-400">—</span>
+      </div>
+      <div class="text-right">
+        <span class="block text-[11px]" style="color: var(--color-text-secondary);">Скорочення пошуку:</span>
+        <span id="mmp-reduction-pct" class="font-mono font-bold text-cyan-400">0%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Live Frontier Card -->
+  <div class="border rounded-xl p-3 shadow-md" style="background-color: var(--color-bg-app); border-color: var(--color-border-subtle);">
+    <div class="flex items-center justify-between mb-2">
+      <span class="font-semibold flex items-center gap-1.5" style="color: var(--color-text-primary);">
+        <span id="mmp-frontier-title">Фронт хвилі</span>
+      </span>
+      <span id="mmp-frontier-count" class="text-[11px]" style="color: var(--color-text-muted);">0 клітинок</span>
+    </div>
+    <div id="mmp-frontier-chips" class="flex flex-wrap gap-1.5 p-2 rounded-lg border min-h-[2.5rem] max-h-24 overflow-y-auto items-center" style="background-color: var(--color-bg-surface); border-color: var(--color-border-subtle);">
+      <span class="text-xs italic" style="color: var(--color-text-muted);">Фронт порожній</span>
+    </div>
+  </div>
+
+  <!-- Step Trace Log -->
+  <div class="border rounded-xl p-3 shadow-md flex flex-col h-64 overflow-hidden" style="background-color: var(--color-bg-app); border-color: var(--color-border-subtle);">
+    <div class="flex items-center justify-between mb-2 shrink-0">
+      <span class="font-semibold" style="color: var(--color-text-primary);">Журнал кроків</span>
+    </div>
+    <div id="mmp-log-list" class="flex-1 min-h-0 overflow-y-auto font-mono text-[11px] flex flex-col gap-1 pr-1 overscroll-contain">
+      <div class="italic placeholder-log py-1" style="color: var(--color-text-muted);">Журнал кроків з'явиться після запуску...</div>
+    </div>
+  </div>
+</div>
