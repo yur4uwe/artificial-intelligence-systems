@@ -11,7 +11,6 @@ import {
     MazeMetrics,
     MazeStepEvent,
     TransitionOperator,
-    parseCoordKey,
 } from '@/algorithms/maze/types'
 import { BaseMazeSearch } from '@/algorithms/maze/base'
 import WaveUniAlgorithm from '@/algorithms/maze/wave-uni'
@@ -346,38 +345,40 @@ export default class MazeWorkspace implements WorkspaceModule {
     }
 
     private handleStep(event: MazeStepEvent): void {
-        // 1. Reset visual info on model
-        this.model.resetVisualInfo()
-
-        // 2. Set forward wave distances
-        for (const [key, dist] of Object.entries(event.forwardDistances)) {
-            const coord = parseCoordKey(key)
-            this.model.setVisualInfo(coord.r, coord.c, { forwardDist: dist })
+        if (event.stepIndex <= 1) {
+            this.model.resetVisualInfo()
+        } else {
+            this.model.clearTransientVisuals()
         }
 
-        // 3. Set backward wave distances if bidirectional
-        if (event.backwardDistances) {
-            for (const [key, dist] of Object.entries(event.backwardDistances)) {
-                const coord = parseCoordKey(key)
-                this.model.setVisualInfo(coord.r, coord.c, {
-                    backwardDist: dist,
-                })
+        // 1. Apply single cell update if present (O(1) incremental update)
+        if (event.updatedCell) {
+            const { coord, dist, wave } = event.updatedCell
+            if (wave === 'forward') {
+                this.model.setVisualInfo(coord.r, coord.c, { forwardDist: dist })
+            } else {
+                this.model.setVisualInfo(coord.r, coord.c, { backwardDist: dist })
             }
         }
 
-        // 4. Mark frontier cells
+        // 2. Mark active frontier cells
         for (const c of event.frontier) {
             this.model.setVisualInfo(c.r, c.c, { isFrontier: true })
         }
+        if (event.backwardFrontier) {
+            for (const c of event.backwardFrontier) {
+                this.model.setVisualInfo(c.r, c.c, { isFrontier: true })
+            }
+        }
 
-        // 5. Mark current cell
+        // 3. Mark current cell
         if (event.currentCell) {
             this.model.setVisualInfo(event.currentCell.r, event.currentCell.c, {
                 isCurrent: true,
             })
         }
 
-        // 6. Mark meeting point if found
+        // 4. Mark meeting point if found
         if (event.meetingPoint) {
             this.model.setVisualInfo(
                 event.meetingPoint.r,
@@ -386,7 +387,7 @@ export default class MazeWorkspace implements WorkspaceModule {
             )
         }
 
-        // 7. Mark path cells if found
+        // 5. Mark path cells if found
         if (event.foundPath) {
             this.model.setPath(event.foundPath)
             for (const p of event.foundPath) {

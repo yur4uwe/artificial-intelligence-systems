@@ -225,6 +225,17 @@ export class MazeModel {
         return this.currentPath
     }
 
+    /**
+     * Clear temporary highlights (active/current cell, frontier perimeters)
+     * without wiping accumulated wave distances.
+     */
+    public clearTransientVisuals(): void {
+        for (const info of this.visualInfo.values()) {
+            if (info.isCurrent) info.isCurrent = false
+            if (info.isFrontier) info.isFrontier = false
+        }
+    }
+
     public resetVisualInfo(): void {
         this.visualInfo.clear()
         this.currentPath = null

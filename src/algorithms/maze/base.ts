@@ -12,7 +12,8 @@ import {
 
 export abstract class BaseMazeSearch implements RunnableAlgorithm<MazeStepEvent> {
     protected options: MazeSearchOptions
-    protected generator: Generator<MazeStepEvent, void, unknown> | null = null
+    protected rows: number
+    protected cols: number
     protected metrics: MazeMetrics | null = null
     protected isDone: boolean = false
     protected benchmarkCache = new Map<string, number>()
@@ -22,36 +23,13 @@ export abstract class BaseMazeSearch implements RunnableAlgorithm<MazeStepEvent>
             ...options,
             grid: options.grid.map((row) => [...row]),
         }
+        this.rows = options.grid.length
+        this.cols = options.grid[0]?.length ?? 0
     }
 
-    public step(): MazeStepEvent | null {
-        if (this.isDone) {
-            return null
-        }
+    public abstract step(): MazeStepEvent | null
 
-        if (!this.generator) {
-            this.generator = this.generateSteps()
-        }
-
-        const next = this.generator.next()
-        if (next.done) {
-            this.isDone = true
-            return null
-        }
-
-        const stepEvent = next.value
-        if (stepEvent.status === 'found' || stepEvent.status === 'not-found') {
-            this.isDone = true
-        }
-
-        return stepEvent
-    }
-
-    public reset(): void {
-        this.generator = null
-        this.metrics = null
-        this.isDone = false
-    }
+    public abstract reset(): void
 
     public isFinished(): boolean {
         return this.isDone
@@ -189,6 +167,4 @@ export abstract class BaseMazeSearch implements RunnableAlgorithm<MazeStepEvent>
         this.benchmarkCache.set(key, avgDurationMs)
         return avgDurationMs
     }
-
-    protected abstract generateSteps(): Generator<MazeStepEvent, void, unknown>
 }

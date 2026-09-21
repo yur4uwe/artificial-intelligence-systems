@@ -52,12 +52,17 @@ export interface MazeMetrics {
     statusText: string
 }
 
+export interface MazeCellUpdate {
+    coord: GridCoord
+    dist: number
+    wave: 'forward' | 'backward'
+}
+
 export type MazeStepEvent = StepEvent & {
     currentCell: GridCoord | null
     frontier: GridCoord[]
-    visited: GridCoord[]
-    forwardDistances: Record<string, number>
-    backwardDistances?: Record<string, number>
+    backwardFrontier?: GridCoord[]
+    updatedCell?: MazeCellUpdate
     activeEdge?: { from: GridCoord; to: GridCoord }
     meetingPoint?: GridCoord | null
     foundPath?: GridCoord[]
