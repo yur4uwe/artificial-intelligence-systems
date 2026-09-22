@@ -14,10 +14,74 @@ export interface CellDrawOptions {
 }
 
 /**
- * Draw a single maze grid cell directly using ThemePalette tokens,
- * mirroring graph workspace node state semantics.
+ * Helper to determine badge text, text color, and fill color for a cell
  */
-export function drawCell(
+export function getCellLabelInfo(
+    theme: ThemePalette,
+    opt: CellDrawOptions
+): { textBadge: string | null; textColor: string; badgeBg: string } {
+    const { isStart, isGoal, info } = opt
+    const nodeColors = theme.graph.nodes
+    let textBadge: string | null = null
+    let textColor = theme.ui.textPrimary
+    let badgeBg = nodeColors.idle.fillGradientStart
+
+    if (isStart) {
+        textBadge = 'S'
+        textColor = nodeColors.start.text
+        badgeBg = nodeColors.start.fillGradientStart
+    } else if (isGoal) {
+        textBadge = 'G'
+        textColor = nodeColors.goal.text
+        badgeBg = nodeColors.goal.fillGradientStart
+    } else if (info?.isPath) {
+        textColor = nodeColors.path.text
+        badgeBg = nodeColors.path.fillGradientStart
+        if (info.forwardDist !== undefined && info.backwardDist !== undefined) {
+            textBadge = `${info.forwardDist}|${info.backwardDist}`
+        } else if (info.forwardDist !== undefined) {
+            textBadge = `${info.forwardDist}`
+        } else if (info.backwardDist !== undefined) {
+            textBadge = `${info.backwardDist}`
+        }
+    } else if (info?.isMeeting) {
+        textColor = nodeColors.current.text
+        badgeBg = nodeColors.current.fillGradientStart
+        if (info.forwardDist !== undefined && info.backwardDist !== undefined) {
+            textBadge = `${info.forwardDist}|${info.backwardDist}`
+        }
+    } else if (info?.forwardDist !== undefined && info?.backwardDist !== undefined) {
+        textColor = nodeColors.current.text
+        badgeBg = nodeColors.current.fillGradientStart
+        textBadge = `${info.forwardDist}|${info.backwardDist}`
+    } else if (info?.forwardDist !== undefined) {
+        if (info.isFrontier) {
+            textColor = nodeColors.inQueue.text
+            badgeBg = nodeColors.inQueue.fillGradientStart
+        } else {
+            textColor = nodeColors.visited.text
+            badgeBg = nodeColors.visited.fillGradientStart
+        }
+        textBadge = `${info.forwardDist}`
+    } else if (info?.backwardDist !== undefined) {
+        const secondWave = nodeColors.secondWave
+        if (info.isFrontier) {
+            textColor = secondWave.text
+            badgeBg = secondWave.fillGradientStart
+        } else {
+            textColor = theme.ui.textPrimary
+            badgeBg = secondWave.glow
+        }
+        textBadge = `${info.backwardDist}`
+    }
+
+    return { textBadge, textColor, badgeBg }
+}
+
+/**
+ * Draw cell body (fill, halo, border). Does NOT draw text badge.
+ */
+export function drawCellBody(
     ctx: CanvasRenderingContext2D,
     theme: ThemePalette,
     opt: CellDrawOptions
@@ -49,72 +113,47 @@ export function drawCell(
     // Determine state identically to Graph workspace
     let fillColor: string | null = null
     let strokeColor: string | null = null
-    let textColor = theme.ui.textPrimary
-    let textBadge: string | null = null
     let haloColor: string | null = null
 
     if (isStart) {
         haloColor = nodeColors.start.glow
         strokeColor = nodeColors.start.stroke
         fillColor = nodeColors.start.fillGradientStart
-        textColor = nodeColors.start.text
-        textBadge = 'S'
     } else if (isGoal) {
         haloColor = nodeColors.goal.glow
         strokeColor = nodeColors.goal.stroke
         fillColor = nodeColors.goal.fillGradientStart
-        textColor = nodeColors.goal.text
-        textBadge = 'G'
     } else if (info?.isPath) {
-        // Exact identical highlight to graph path nodes
-        haloColor = nodeColors.path.glow
-        strokeColor = nodeColors.path.stroke
+        haloColor = info.isMeeting ? nodeColors.current.glow : nodeColors.path.glow
+        strokeColor = info.isMeeting ? nodeColors.current.stroke : nodeColors.path.stroke
         fillColor = nodeColors.path.fillGradientStart
-        textColor = nodeColors.path.text
-        if (info.forwardDist !== undefined) {
-            textBadge = `${info.forwardDist}`
-        }
     } else if (info?.isMeeting) {
         haloColor = nodeColors.current.glow
         strokeColor = nodeColors.current.stroke
         fillColor = nodeColors.current.fillGradientStart
-        textColor = nodeColors.current.text
-        if (info.forwardDist !== undefined && info.backwardDist !== undefined) {
-            textBadge = `${info.forwardDist}|${info.backwardDist}`
-        }
     } else if (info?.forwardDist !== undefined && info?.backwardDist !== undefined) {
         haloColor = nodeColors.current.glow
         strokeColor = nodeColors.current.stroke
         fillColor = nodeColors.current.fillGradientStart
-        textColor = nodeColors.current.text
-        textBadge = `${info.forwardDist}|${info.backwardDist}`
     } else if (info?.forwardDist !== undefined) {
-        // Forward wave
         if (info.isFrontier) {
             haloColor = nodeColors.inQueue.glow
             strokeColor = nodeColors.inQueue.stroke
             fillColor = nodeColors.inQueue.fillGradientStart
-            textColor = nodeColors.inQueue.text
         } else {
             strokeColor = nodeColors.visited.stroke
             fillColor = nodeColors.visited.fillGradientStart
-            textColor = nodeColors.visited.text
         }
-        textBadge = `${info.forwardDist}`
     } else if (info?.backwardDist !== undefined) {
-        // Backward wave (Lab 4 bidirectional)
         const secondWave = nodeColors.secondWave
         if (info.isFrontier) {
             haloColor = secondWave.glow
             strokeColor = secondWave.stroke
             fillColor = secondWave.fillGradientStart
-            textColor = secondWave.text
         } else {
             strokeColor = secondWave.stroke
             fillColor = secondWave.glow
-            textColor = theme.ui.textPrimary
         }
-        textBadge = `${info.backwardDist}`
     }
 
     // 3. Fill state
@@ -142,16 +181,55 @@ export function drawCell(
         ctx.lineWidth = 1.5
         ctx.strokeRect(x + 1, y + 1, cellSize - 2, cellSize - 2)
     }
+}
 
-    // 6. Cell Text Label
-    if (textBadge) {
-        const fontSize = Math.max(9, Math.floor(cellSize * 0.38))
-        ctx.font = `bold ${fontSize}px Inter, ui-sans-serif, system-ui, sans-serif`
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        ctx.fillStyle = textColor
-        ctx.fillText(textBadge, x + cellSize / 2, y + cellSize / 2)
-    }
+/**
+ * Draw cell label / badge ON TOP of path polyline and cell fills.
+ */
+export function drawCellLabel(
+    ctx: CanvasRenderingContext2D,
+    theme: ThemePalette,
+    opt: CellDrawOptions
+): void {
+    const { x, y, cellSize, isWall } = opt
+    if (isWall) return
+
+    const { textBadge, textColor, badgeBg } = getCellLabelInfo(theme, opt)
+    if (!textBadge) return
+
+    const cx = x + cellSize / 2
+    const cy = y + cellSize / 2
+
+    const scale =
+        textBadge.length > 4 ? 0.25 : textBadge.length > 2 ? 0.32 : 0.38
+    const fontSize = Math.max(8, Math.floor(cellSize * scale))
+    ctx.font = `bold ${fontSize}px Inter, ui-sans-serif, system-ui, sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+
+    // Clean halo stroke matching the cell background to prevent line overlap
+    ctx.save()
+    ctx.strokeStyle = badgeBg
+    ctx.lineWidth = 3.5
+    ctx.lineJoin = 'round'
+    ctx.strokeText(textBadge, cx, cy)
+
+    // Crisp text fill on top
+    ctx.fillStyle = textColor
+    ctx.fillText(textBadge, cx, cy)
+    ctx.restore()
+}
+
+/**
+ * Draw a single maze grid cell directly using ThemePalette tokens.
+ */
+export function drawCell(
+    ctx: CanvasRenderingContext2D,
+    theme: ThemePalette,
+    opt: CellDrawOptions
+): void {
+    drawCellBody(ctx, theme, opt)
+    drawCellLabel(ctx, theme, opt)
 }
 
 /**

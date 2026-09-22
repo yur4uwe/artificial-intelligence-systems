@@ -1,7 +1,13 @@
 import { MazeModel } from '../maze-model'
 import { GridCoord } from '@/algorithms/maze/types'
 import { getActiveTheme, onThemeChange } from '@common/theme/palette'
-import { drawCell, drawGridRulers, drawPathPolyline } from './render-primitives'
+import {
+    drawCell,
+    drawCellBody,
+    drawCellLabel,
+    drawGridRulers,
+    drawPathPolyline,
+} from './render-primitives'
 
 export interface MazeContextMenuEvent {
     clientX: number
@@ -395,7 +401,7 @@ export class GridRenderer {
         // 1. Draw Row & Column Headers (coordinate indices)
         drawGridRulers(ctx, theme, rows, cols, cellSize)
 
-        // 2. Draw Cells using render primitives & ThemePalette
+        // 2. Draw Cell Bodies (fills, halos, borders)
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
                 const x = c * cellSize
@@ -411,7 +417,7 @@ export class GridRenderer {
                     this.hoveredCell.c === c &&
                     !this.isPanning
 
-                drawCell(ctx, theme, {
+                drawCellBody(ctx, theme, {
                     x,
                     y,
                     cellSize,
@@ -424,10 +430,34 @@ export class GridRenderer {
             }
         }
 
-        // 3. Draw Connecting Path Polyline (identical to graph path edges)
+        // 3. Draw Connecting Path Polyline (behind labels, on top of cell backgrounds)
         const currentPath = this.model.getPath()
         if (currentPath && currentPath.length > 1) {
             drawPathPolyline(ctx, theme, currentPath, cellSize)
+        }
+
+        // 4. Draw Cell Labels (numbers, 'S', 'G') ON TOP of the polyline
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const isWall = this.model.isWall(r, c)
+                if (isWall) continue
+
+                const x = c * cellSize
+                const y = r * cellSize
+                const info = this.model.getVisualInfo(r, c)
+                const isStart = start !== null && r === start.r && c === start.c
+                const isGoal = goal !== null && r === goal.r && c === goal.c
+
+                drawCellLabel(ctx, theme, {
+                    x,
+                    y,
+                    cellSize,
+                    isWall: false,
+                    isStart,
+                    isGoal,
+                    info,
+                })
+            }
         }
 
         ctx.restore() // End Pan & Zoom

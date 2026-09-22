@@ -449,10 +449,20 @@ export default class WaveBiAlgorithm extends BaseMazeSearch {
             statusText: `Зустріч хвиль у точці (${meeting.r}, ${meeting.c})! Довжина шляху: ${path.length - 1} кроків. Скорочення пошуку: ${reductionPct}%.`,
         }
 
+        const meetingDist =
+            this.activeWave === 'forward'
+                ? this.distGridF[meeting.r * this.cols + meeting.c]
+                : this.distGridB[meeting.r * this.cols + meeting.c]
+
         return {
             stepIndex: this.stepCounter,
             currentCell: meeting,
             frontier: [...this.queueF, ...this.queueB],
+            updatedCell: {
+                coord: meeting,
+                dist: meetingDist,
+                wave: this.activeWave,
+            },
             openedCount: this.openedCounter,
             cycleCount: this.cycleCounter,
             meetingPoint: meeting,
