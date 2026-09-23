@@ -63,6 +63,7 @@ export type MazeStepEvent = StepEvent & {
     frontier: GridCoord[]
     backwardFrontier?: GridCoord[]
     updatedCell?: MazeCellUpdate
+    updatedCells?: MazeCellUpdate[]
     activeEdge?: { from: GridCoord; to: GridCoord }
     meetingPoint?: GridCoord | null
     foundPath?: GridCoord[]

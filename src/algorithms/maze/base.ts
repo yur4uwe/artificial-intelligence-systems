@@ -141,7 +141,7 @@ export abstract class BaseMazeSearch implements RunnableAlgorithm<MazeStepEvent>
         meetingPoint?: GridCoord | null
     }
 
-    public benchmark(iterations: number = 200): number {
+    public benchmark(iterations: number = 500): number {
         const { grid, start, goal, operator } = this.options
         const rows = grid.length
         const cols = grid[0]?.length ?? 0

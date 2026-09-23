@@ -2,7 +2,11 @@ import { TransitionOperator, GridCoord } from '@/algorithms/maze/types'
 import { MazePreset } from '../types'
 import paramsTabHtml from './params-tab.html?raw'
 
-export type MazeAlgorithmType = 'wave-uni' | 'wave-bi'
+export type MazeAlgorithmType =
+    | 'wave-uni'
+    | 'wave-uni-batch'
+    | 'wave-bi'
+    | 'wave-bi-batch'
 
 export interface MazeParamsTabOptions {
     container: HTMLElement

@@ -12,9 +12,10 @@ import {
     MazeStepEvent,
     TransitionOperator,
 } from '@/algorithms/maze/types'
-import { BaseMazeSearch } from '@/algorithms/maze/base'
 import WaveUniAlgorithm from '@/algorithms/maze/wave-uni'
 import WaveBiAlgorithm from '@/algorithms/maze/wave-bi'
+import WaveUniBatchAlgorithm from '@/algorithms/maze/wave-uni-batch'
+import WaveBiBatchAlgorithm from '@/algorithms/maze/wave-bi-batch'
 
 import { ContextMenu, ContextMenuItem } from '@common/ui/context-menu'
 import { MazeContextMenuEvent } from './drawing/grid-renderer'
@@ -97,9 +98,10 @@ export default class MazeWorkspace implements WorkspaceModule {
             presets: MAZE_PRESETS,
             onAlgorithmChange: (algo) => {
                 this.activeAlgorithmType = algo
-                this.metricsPanel.setBidirectionalVisible(algo === 'wave-bi')
+                const isBi = algo === 'wave-bi' || algo === 'wave-bi-batch'
+                this.metricsPanel.setBidirectionalVisible(isBi)
                 this.metricsPanel.setFrontierLabel(
-                    algo === 'wave-bi' ? 'Зустрічні фронти' : 'Фронт хвилі'
+                    isBi ? 'Зустрічні фронти' : 'Фронт хвилі'
                 )
                 this.runner.reset()
                 this.updateAlgorithm()
@@ -172,10 +174,12 @@ export default class MazeWorkspace implements WorkspaceModule {
             statusText: 'Пошук не виконувався',
         }
 
-        const labTitle =
-            this.activeAlgorithmType === 'wave-uni'
-                ? 'Лабораторна 3: Одно-направлений хвильовий пошук (Лі)'
-                : 'Лабораторна 4: Двонаправлений хвильовий пошук'
+        const isBi =
+            this.activeAlgorithmType === 'wave-bi' ||
+            this.activeAlgorithmType === 'wave-bi-batch'
+        const labTitle = isBi
+            ? 'Лабораторна 4: Двонаправлений хвильовий пошук'
+            : 'Лабораторна 3: Одно-направлений хвильовий пошук (Лі)'
 
         const opTitle =
             this.activeOperator === 'orthogonal'
@@ -228,8 +232,12 @@ export default class MazeWorkspace implements WorkspaceModule {
 
         if (this.activeAlgorithmType === 'wave-uni') {
             this.activeAlgorithm = new WaveUniAlgorithm(options)
-        } else {
+        } else if (this.activeAlgorithmType === 'wave-uni-batch') {
+            this.activeAlgorithm = new WaveUniBatchAlgorithm(options)
+        } else if (this.activeAlgorithmType === 'wave-bi') {
             this.activeAlgorithm = new WaveBiAlgorithm(options)
+        } else {
+            this.activeAlgorithm = new WaveBiBatchAlgorithm(options)
         }
 
         this.runner.setAlgorithm(this.activeAlgorithm)
@@ -351,13 +359,26 @@ export default class MazeWorkspace implements WorkspaceModule {
             this.model.clearTransientVisuals()
         }
 
-        // 1. Apply single cell update if present (O(1) incremental update)
+        // 1. Apply single cell update or batch cell updates if present
         if (event.updatedCell) {
             const { coord, dist, wave } = event.updatedCell
             if (wave === 'forward') {
                 this.model.setVisualInfo(coord.r, coord.c, { forwardDist: dist })
             } else {
                 this.model.setVisualInfo(coord.r, coord.c, { backwardDist: dist })
+            }
+        }
+        if (event.updatedCells) {
+            for (const item of event.updatedCells) {
+                if (item.wave === 'forward') {
+                    this.model.setVisualInfo(item.coord.r, item.coord.c, {
+                        forwardDist: item.dist,
+                    })
+                } else {
+                    this.model.setVisualInfo(item.coord.r, item.coord.c, {
+                        backwardDist: item.dist,
+                    })
+                }
             }
         }
 
