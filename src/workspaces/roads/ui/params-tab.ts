@@ -80,9 +80,16 @@ export class RoadsParamsTab {
         })
     }
 
-    public setStartAndGoal(startCity: string, goalCity: string): void {
-        this.startSelect.value = startCity
-        this.goalSelect.value = goalCity
+    public syncStart(cityName: string): void {
+        if (cityName) {
+            this.startSelect.value = cityName
+        }
+    }
+
+    public syncGoal(cityName: string): void {
+        if (cityName) {
+            this.goalSelect.value = cityName
+        }
     }
 
     public updateCityList(
@@ -90,7 +97,7 @@ export class RoadsParamsTab {
         currentStart?: string,
         currentGoal?: string
     ): void {
-        const sortedCities = [...cities].sort((a, b) =>
+        const sortedCities = ['-- Не вибрано --', ...cities].sort((a, b) =>
             a.localeCompare(b, 'uk')
         )
         const cityOptions = sortedCities

@@ -12,6 +12,7 @@ import { PlaybackBar } from '@common/ui/playback-bar'
 import DijkstraAlgorithm from '@/algorithms/map/dijkstra'
 import { DijkstraMetrics, DijkstraStepEvent } from '@/algorithms/map/types'
 import { exportDijkstraMetricsToCSV } from './export-utils'
+import { GraphNode } from '../graph/types'
 
 export default class RoadsWorkspace implements WorkspaceModule {
     public id = 'roads-workspace'
@@ -28,8 +29,8 @@ export default class RoadsWorkspace implements WorkspaceModule {
     private algorithm: DijkstraAlgorithm | null = null
     private lastMetrics: DijkstraMetrics | null = null
 
-    private startCity: string = 'Київ'
-    private goalCity: string = 'Львів'
+    private startCity?: string = undefined
+    private goalCity?: string = undefined
 
     // Transient state tracking for delta updates
     private previousCurrentId: number | null = null
@@ -68,6 +69,10 @@ export default class RoadsWorkspace implements WorkspaceModule {
             runner: this.runner,
             onStateChange: () => this.renderer.requestRender(),
             canPlay: () => {
+                if (!this.startCity || !this.goalCity) {
+                    alert('Будь ласка, виберіть початкове та цільове місто!')
+                    return false
+                }
                 const startNode = this.model.findNodeByCityName(this.startCity)
                 const goalNode = this.model.findNodeByCityName(this.goalCity)
                 if (!startNode || !goalNode) {
@@ -100,6 +105,12 @@ export default class RoadsWorkspace implements WorkspaceModule {
     }
 
     private updateAlgorithm(): void {
+        if (!this.startCity || !this.goalCity) {
+            this.algorithm = null
+            this.runner.setAlgorithm(null)
+            return
+        }
+
         const startNode = this.model.findNodeByCityName(this.startCity)
         const goalNode = this.model.findNodeByCityName(this.goalCity)
 
@@ -119,6 +130,10 @@ export default class RoadsWorkspace implements WorkspaceModule {
     }
 
     private handleStep(event: DijkstraStepEvent): void {
+        if (!this.startCity || !this.goalCity) {
+            return
+        }
+
         const startNode = this.model.findNodeByCityName(this.startCity)
         const goalNode = this.model.findNodeByCityName(this.goalCity)
         const startId = startNode?.id ?? -1
@@ -533,7 +548,7 @@ export default class RoadsWorkspace implements WorkspaceModule {
 
     private setStartCity(cityName: string): void {
         this.startCity = cityName
-        this.paramsTab.setStartAndGoal(this.startCity, this.goalCity)
+        this.paramsTab.syncStart(this.startCity)
         this.runner.reset()
         this.updateAlgorithm()
         this.syncStartAndGoalVisuals()
@@ -541,7 +556,7 @@ export default class RoadsWorkspace implements WorkspaceModule {
 
     private setGoalCity(cityName: string): void {
         this.goalCity = cityName
-        this.paramsTab.setStartAndGoal(this.startCity, this.goalCity)
+        this.paramsTab.syncGoal(this.goalCity)
         this.runner.reset()
         this.updateAlgorithm()
         this.syncStartAndGoalVisuals()
@@ -551,15 +566,26 @@ export default class RoadsWorkspace implements WorkspaceModule {
         const temp = this.startCity
         this.startCity = this.goalCity
         this.goalCity = temp
-        this.paramsTab.setStartAndGoal(this.startCity, this.goalCity)
+        if (this.startCity) {
+            this.paramsTab.syncStart(this.startCity)
+        }
+        if (this.goalCity) {
+            this.paramsTab.syncGoal(this.goalCity)
+        }
         this.runner.reset()
         this.updateAlgorithm()
         this.syncStartAndGoalVisuals()
     }
 
     private syncStartAndGoalVisuals(): void {
-        const startNode = this.model.findNodeByCityName(this.startCity)
-        const goalNode = this.model.findNodeByCityName(this.goalCity)
+        let startNode: GraphNode | undefined
+        let goalNode: GraphNode | undefined
+        if (this.startCity) {
+            startNode = this.model.findNodeByCityName(this.startCity)
+        }
+        if (this.goalCity) {
+            goalNode = this.model.findNodeByCityName(this.goalCity)
+        }
 
         this.model.resetVisualStates({
             startId: startNode?.id ?? null,
