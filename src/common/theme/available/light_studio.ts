@@ -1,4 +1,4 @@
-import { ThemePalette } from '@common/theme/palette';
+import { ThemePalette } from '@common/theme/palette'
 
 export const LIGHT_STUDIO_THEME: ThemePalette = {
     id: 'light-studio',
@@ -23,16 +23,16 @@ export const LIGHT_STUDIO_THEME: ThemePalette = {
         selectionOutline: '#3b82f6',
         tempEdgeLine: '#2563eb',
         edges: {
-            idle: '#98a7b3',
+            idle: '#1e293b',
             active: '#d97706',
-            traversed: '#94a3b8',
+            traversed: '#16a34a',
             path: '#0284c7',
         },
         nodes: {
             idle: {
                 fillGradientStart: '#f1f5f9',
                 fillGradientEnd: '#e2e8f0',
-                stroke: '#94a3b8',
+                stroke: '#334155',
                 strokeHover: '#c5cdd9',
                 text: '#1e293b',
             },
@@ -98,4 +98,4 @@ export const LIGHT_STUDIO_THEME: ThemePalette = {
             },
         },
     },
-};
+}

@@ -23,6 +23,27 @@ export interface RoadsContextMenuEvent {
 export interface RoadsCanvasCallbacks {
     onNodeClick?: (nodeId: number) => void
     onContextMenu?: (e: RoadsContextMenuEvent) => void
+    onConnectNodes?: (sourceNodeId: number, targetNodeId: number) => void
+    onCanvasChange?: () => void
+}
+
+interface PillStyle {
+    bg: string
+    border: string
+}
+
+const DEFAULT_PILL_STYLE: PillStyle = {
+    bg: 'rgba(15, 23, 42, 0.85)',
+    border: 'rgba(255, 255, 255, 0.15)',
+}
+
+const CITY_PILL_STYLES: Record<string, PillStyle> = {
+    start: { bg: 'rgba(34, 197, 94, 0.9)', border: '#4ade80' },
+    goal: { bg: 'rgba(239, 68, 68, 0.9)', border: '#f87171' },
+    current: { bg: 'rgba(180, 83, 9, 0.9)', border: '#fbbf24' },
+    path: { bg: 'rgba(3, 105, 161, 0.9)', border: '#38bdf8' },
+    'in-queue': { bg: 'rgba(12, 74, 110, 0.9)', border: '#38bdf8' },
+    visited: { bg: 'rgba(30, 41, 59, 0.9)', border: '#64748b' },
 }
 
 export class RoadsCanvasRenderer {
@@ -34,7 +55,7 @@ export class RoadsCanvasRenderer {
     // Map Image
     private mapImage: HTMLImageElement | null = null
     private isImageLoaded: boolean = false
-    private mapOpacity: number = 0.85
+    private mapOpacity: number = 0.6
     private showMapImage: boolean = true
     private mapImageScale: number = 0.55 // Hardcoded 55% scale for crisp 1600x1114 image (width: 880, height: 613)
 
@@ -49,6 +70,15 @@ export class RoadsCanvasRenderer {
     private selectedNodeId: number | null = null
     private isPanning: boolean = false
     private panStart: { x: number; y: number } = { x: 0, y: 0 }
+
+    private draggingNodeId: number | null = null
+    private dragOffset: { x: number; y: number } = { x: 0, y: 0 }
+    private hasDragged: boolean = false
+    private edgeSourceNodeId: number | null = null
+    private mouseScreenPos: { x: number; y: number } = { x: 0, y: 0 }
+
+    private labelWidthCache = new Map<string, number>()
+    private distanceBadgeWidthCache = new Map<number, number>()
 
     private animationFrameId: number | null = null
     private unsubscribeTheme?: () => void
@@ -84,8 +114,12 @@ export class RoadsCanvasRenderer {
     public setMapImageScale(scale: number): void {
         this.mapImageScale = Math.max(0.1, Math.min(3.0, scale))
         if (this.mapImage && this.mapImage.naturalWidth) {
-            this.mapImage.width = Math.round(this.mapImage.naturalWidth * this.mapImageScale)
-            this.mapImage.height = Math.round(this.mapImage.naturalHeight * this.mapImageScale)
+            this.mapImage.width = Math.round(
+                this.mapImage.naturalWidth * this.mapImageScale
+            )
+            this.mapImage.height = Math.round(
+                this.mapImage.naturalHeight * this.mapImageScale
+            )
             this.fitMapToViewport()
             this.requestRender()
         }
@@ -95,7 +129,12 @@ export class RoadsCanvasRenderer {
         return this.mapImageScale
     }
 
-    public getImageDimensions(): { width: number; height: number; naturalWidth: number; naturalHeight: number } | null {
+    public getImageDimensions(): {
+        width: number
+        height: number
+        naturalWidth: number
+        naturalHeight: number
+    } | null {
         if (!this.mapImage) return null
         return {
             width: this.mapImage.width,
@@ -145,6 +184,22 @@ export class RoadsCanvasRenderer {
         this.requestRender()
     }
 
+    public resetView(): void {
+        this.pan = { x: 0, y: 0 }
+        this.zoom = 1.0
+        this.requestRender()
+    }
+
+    public setEdgeSource(nodeId: number | null): void {
+        this.edgeSourceNodeId = nodeId
+        this.canvas.style.cursor = nodeId !== null ? 'crosshair' : 'default'
+        this.requestRender()
+    }
+
+    public getEdgeSource(): number | null {
+        return this.edgeSourceNodeId
+    }
+
     public setModel(model: MapModel): void {
         this.model = model
         this.selectedNodeId = null
@@ -185,20 +240,62 @@ export class RoadsCanvasRenderer {
         }
     }
 
-    private findNodeAt(worldX: number, worldY: number): GraphNode | null {
+    public worldToScreen(
+        worldX: number,
+        worldY: number
+    ): { x: number; y: number } {
+        return {
+            x: worldX * this.zoom + this.pan.x,
+            y: worldY * this.zoom + this.pan.y,
+        }
+    }
+
+    private getCityLabelWidth(label: string): number {
+        let width = this.labelWidthCache.get(label)
+        if (width === undefined) {
+            this.ctx.save()
+            this.ctx.font = 'bold 11px Inter, sans-serif'
+            width = this.ctx.measureText(label).width + 12
+            this.ctx.restore()
+            this.labelWidthCache.set(label, width)
+        }
+        return width
+    }
+
+    private findNodeAt(screenX: number, screenY: number): GraphNode | null {
         const nodes = this.model.getNodes()
+        // Check marker circles first
         for (let i = nodes.length - 1; i >= 0; i--) {
             const node = nodes[i]
             const radius = node.radius ?? 14
-            const dist = Math.hypot(node.x - worldX, node.y - worldY)
+            const screen = this.worldToScreen(node.x, node.y)
+            const dist = Math.hypot(screen.x - screenX, screen.y - screenY)
             if (dist <= radius + 6) {
+                return node
+            }
+        }
+        // Then check city label pills
+        for (let i = nodes.length - 1; i >= 0; i--) {
+            const node = nodes[i]
+            const radius = node.radius ?? 14
+            const screen = this.worldToScreen(node.x, node.y)
+            const pillW = this.getCityLabelWidth(node.label)
+            const pillH = 16
+            const pillX = screen.x - pillW / 2
+            const pillY = screen.y + radius + 3
+            if (
+                screenX >= pillX &&
+                screenX <= pillX + pillW &&
+                screenY >= pillY &&
+                screenY <= pillY + pillH
+            ) {
                 return node
             }
         }
         return null
     }
 
-    private findEdgeAt(worldX: number, worldY: number): GraphEdge | null {
+    private findEdgeAt(screenX: number, screenY: number): GraphEdge | null {
         const edges = this.model.getEdges()
         for (let i = edges.length - 1; i >= 0; i--) {
             const edge = edges[i]
@@ -206,13 +303,16 @@ export class RoadsCanvasRenderer {
             const to = this.model.getNode(edge.to)
             if (!from || !to) continue
 
+            const fromScreen = this.worldToScreen(from.x, from.y)
+            const toScreen = this.worldToScreen(to.x, to.y)
+
             const dist = this.pointToSegmentDistance(
-                worldX,
-                worldY,
-                from.x,
-                from.y,
-                to.x,
-                to.y
+                screenX,
+                screenY,
+                fromScreen.x,
+                fromScreen.y,
+                toScreen.x,
+                toScreen.y
             )
             if (dist <= 8) {
                 return edge
@@ -238,10 +338,19 @@ export class RoadsCanvasRenderer {
 
     private attachEventListeners(): void {
         this.canvas.addEventListener('pointerdown', this.onPointerDown)
-        this.canvas.addEventListener('pointermove', this.onPointerMove)
-        this.canvas.addEventListener('pointerup', this.onPointerUp)
+        window.addEventListener('pointermove', this.onPointerMove)
+        window.addEventListener('pointerup', this.onPointerUp)
         this.canvas.addEventListener('wheel', this.onWheel, { passive: false })
         this.canvas.addEventListener('contextmenu', this.onContextMenu)
+        window.addEventListener('keydown', this.onKeyDown)
+    }
+
+    private onKeyDown = (e: KeyboardEvent): void => {
+        if (e.key === 'Escape' && this.edgeSourceNodeId !== null) {
+            this.edgeSourceNodeId = null
+            this.canvas.style.cursor = 'default'
+            this.requestRender()
+        }
     }
 
     private onPointerDown = (e: PointerEvent): void => {
@@ -257,12 +366,36 @@ export class RoadsCanvasRenderer {
             return
         }
 
-        if (e.button !== 0) return // Left click only for selection/pan
+        if (e.button !== 0) return // Left click only for selection/pan/connecting
 
-        const clickedNode = this.findNodeAt(world.x, world.y)
+        // If in edge connecting mode
+        if (this.edgeSourceNodeId !== null) {
+            const targetNode = this.findNodeAt(screenX, screenY)
+            if (targetNode && targetNode.id !== this.edgeSourceNodeId) {
+                const sourceId = this.edgeSourceNodeId
+                this.edgeSourceNodeId = null
+                this.canvas.style.cursor = 'default'
+                this.callbacks.onConnectNodes?.(sourceId, targetNode.id)
+                this.requestRender()
+                return
+            } else {
+                // Clicked same node or empty space -> cancel connecting
+                this.edgeSourceNodeId = null
+                this.canvas.style.cursor = 'default'
+                this.requestRender()
+                return
+            }
+        }
+
+        const clickedNode = this.findNodeAt(screenX, screenY)
         if (clickedNode) {
             this.selectedNodeId = clickedNode.id
-            this.callbacks.onNodeClick?.(clickedNode.id)
+            this.draggingNodeId = clickedNode.id
+            this.dragOffset = {
+                x: world.x - clickedNode.x,
+                y: world.y - clickedNode.y,
+            }
+            this.hasDragged = false
             this.requestRender()
         } else {
             // Clicked empty canvas -> start panning
@@ -277,6 +410,7 @@ export class RoadsCanvasRenderer {
         const rect = this.canvas.getBoundingClientRect()
         const screenX = e.clientX - rect.left
         const screenY = e.clientY - rect.top
+        this.mouseScreenPos = { x: screenX, y: screenY }
 
         if (this.isPanning) {
             this.pan = {
@@ -289,13 +423,31 @@ export class RoadsCanvasRenderer {
 
         const world = this.screenToWorld(screenX, screenY)
 
+        if (this.draggingNodeId !== null) {
+            const node = this.model.getNode(this.draggingNodeId)
+            if (node) {
+                node.x = Math.round(world.x - this.dragOffset.x)
+                node.y = Math.round(world.y - this.dragOffset.y)
+                this.hasDragged = true
+                this.callbacks.onCanvasChange?.()
+                this.requestRender()
+            }
+            return
+        }
+
+        if (this.edgeSourceNodeId !== null) {
+            this.canvas.style.cursor = 'crosshair'
+            this.requestRender()
+            return
+        }
+
         // Hover detection
         const prevHovered = this.hoveredNodeId
-        const node = this.findNodeAt(world.x, world.y)
+        const node = this.findNodeAt(screenX, screenY)
         this.hoveredNodeId = node ? node.id : null
 
         const prevHoveredEdge = this.hoveredEdgeId
-        const edge = this.findEdgeAt(world.x, world.y)
+        const edge = this.findEdgeAt(screenX, screenY)
         this.hoveredEdgeId = edge ? edge.id : null
 
         if (
@@ -309,6 +461,11 @@ export class RoadsCanvasRenderer {
     }
 
     private onPointerUp = (): void => {
+        if (this.draggingNodeId !== null && !this.hasDragged) {
+            this.callbacks.onNodeClick?.(this.draggingNodeId)
+        }
+        this.draggingNodeId = null
+        this.hasDragged = false
         this.isPanning = false
         this.requestRender()
     }
@@ -326,17 +483,32 @@ export class RoadsCanvasRenderer {
         this.pan.y = mouseY - (mouseY - this.pan.y) * (newZoom / this.zoom)
         this.zoom = newZoom
 
+        // Update hover states after zoom
+        const node = this.findNodeAt(mouseX, mouseY)
+        this.hoveredNodeId = node ? node.id : null
+        const edge = this.findEdgeAt(mouseX, mouseY)
+        this.hoveredEdgeId = edge ? edge.id : null
+        this.canvas.style.cursor =
+            this.hoveredNodeId !== null ? 'pointer' : 'default'
+
         this.requestRender()
     }
 
     private onContextMenu = (e: MouseEvent): void => {
         e.preventDefault()
+        if (this.edgeSourceNodeId !== null) {
+            this.edgeSourceNodeId = null
+            this.canvas.style.cursor = 'default'
+            this.requestRender()
+            return
+        }
+
         const rect = this.canvas.getBoundingClientRect()
         const screenX = e.clientX - rect.left
         const screenY = e.clientY - rect.top
         const world = this.screenToWorld(screenX, screenY)
 
-        const clickedNode = this.findNodeAt(world.x, world.y)
+        const clickedNode = this.findNodeAt(screenX, screenY)
         if (clickedNode) {
             this.callbacks.onContextMenu?.({
                 clientX: e.clientX,
@@ -348,7 +520,7 @@ export class RoadsCanvasRenderer {
             return
         }
 
-        const clickedEdge = this.findEdgeAt(world.x, world.y)
+        const clickedEdge = this.findEdgeAt(screenX, screenY)
         if (clickedEdge) {
             this.callbacks.onContextMenu?.({
                 clientX: e.clientX,
@@ -382,14 +554,11 @@ export class RoadsCanvasRenderer {
         ctx.fillStyle = theme.graph.background
         ctx.fillRect(0, 0, this.canvas.clientWidth, this.canvas.clientHeight)
 
-        // 2. Viewport transform
-        ctx.save()
-        ctx.translate(this.pan.x, this.pan.y)
-        ctx.scale(this.zoom, this.zoom)
-
-        // 3. Draw Ukraine Map Image Underlay
+        // 2. Draw Ukraine Map Image Underlay (transformed by pan and zoom)
         if (this.showMapImage && this.mapImage && this.isImageLoaded) {
             ctx.save()
+            ctx.translate(this.pan.x, this.pan.y)
+            ctx.scale(this.zoom, this.zoom)
             ctx.globalAlpha = this.mapOpacity
             const imgW = this.mapImage.width || this.mapImage.naturalWidth
             const imgH = this.mapImage.height || this.mapImage.naturalHeight
@@ -397,13 +566,40 @@ export class RoadsCanvasRenderer {
             ctx.restore()
         }
 
-        // 4. Draw Road Edges with Kilometers
+        // 3. Draw Road Edges with Kilometers (screen space, fixed relative size)
         this.drawEdges(ctx, theme)
 
-        // 5. Draw City Nodes with Labels
+        // 4. Draw City Nodes with Labels (screen space, fixed relative size)
         this.drawNodes(ctx, theme)
 
-        ctx.restore()
+        // 5. Draw temporary edge connecting line
+        if (this.edgeSourceNodeId !== null) {
+            const sourceNode = this.model.getNode(this.edgeSourceNodeId)
+            if (sourceNode) {
+                const sourceScreen = this.worldToScreen(sourceNode.x, sourceNode.y)
+                ctx.save()
+                ctx.strokeStyle = theme.graph.tempEdgeLine
+                ctx.lineWidth = 2.5
+                ctx.setLineDash([6, 4])
+                ctx.beginPath()
+                ctx.moveTo(sourceScreen.x, sourceScreen.y)
+                ctx.lineTo(this.mouseScreenPos.x, this.mouseScreenPos.y)
+                ctx.stroke()
+
+                // Highlight source circle
+                ctx.beginPath()
+                ctx.arc(
+                    sourceScreen.x,
+                    sourceScreen.y,
+                    (sourceNode.radius ?? 14) + 6,
+                    0,
+                    Math.PI * 2
+                )
+                ctx.stroke()
+                ctx.restore()
+            }
+        }
+
         ctx.restore()
     }
 
@@ -418,18 +614,33 @@ export class RoadsCanvasRenderer {
             const to = this.model.getNode(edge.to)
             if (!from || !to) return
 
-            const dx = to.x - from.x
-            const dy = to.y - from.y
+            const fromScreen = this.worldToScreen(from.x, from.y)
+            const toScreen = this.worldToScreen(to.x, to.y)
+
+            const dx = toScreen.x - fromScreen.x
+            const dy = toScreen.y - fromScreen.y
             const dist = Math.hypot(dx, dy)
             if (dist === 0) return
 
             const fromR = from.radius ?? 14
             const toR = to.radius ?? 14
 
-            const startX = from.x + (dx / dist) * fromR
-            const startY = from.y + (dy / dist) * fromR
-            const endX = to.x - (dx / dist) * toR
-            const endY = to.y - (dy / dist) * toR
+            let startX: number
+            let startY: number
+            let endX: number
+            let endY: number
+
+            if (dist > fromR + toR) {
+                startX = fromScreen.x + (dx / dist) * fromR
+                startY = fromScreen.y + (dy / dist) * fromR
+                endX = toScreen.x - (dx / dist) * toR
+                endY = toScreen.y - (dy / dist) * toR
+            } else {
+                startX = fromScreen.x
+                startY = fromScreen.y
+                endX = toScreen.x
+                endY = toScreen.y
+            }
 
             let strokeColor = theme.graph.edges.idle
             let lineWidth = 2.5
@@ -480,9 +691,13 @@ export class RoadsCanvasRenderer {
         ctx.save()
         ctx.font = 'bold 9px Inter, sans-serif'
         const text = `${weight} км`
-        const textMetrics = ctx.measureText(text)
+        let textWidth = this.distanceBadgeWidthCache.get(weight)
+        if (textWidth === undefined) {
+            textWidth = ctx.measureText(text).width
+            this.distanceBadgeWidthCache.set(weight, textWidth)
+        }
         const padX = 5
-        const boxW = textMetrics.width + padX * 2
+        const boxW = textWidth + padX * 2
         const boxH = 15
 
         ctx.fillStyle = theme.ui.bgSurface
@@ -511,10 +726,10 @@ export class RoadsCanvasRenderer {
             const isSelected = this.selectedNodeId === node.id
             const radius = node.radius ?? 14
             const nodeColors = theme.graph.nodes
+            const screen = this.worldToScreen(node.x, node.y)
 
             let fillColor = nodeColors.idle.fillGradientStart
             let strokeColor = nodeColors.idle.stroke
-            let textColor = '#ffffff'
             let haloColor: string | null = null
 
             switch (node.state) {
@@ -557,7 +772,7 @@ export class RoadsCanvasRenderer {
             if (haloColor) {
                 ctx.save()
                 ctx.beginPath()
-                ctx.arc(node.x, node.y, radius + 7, 0, Math.PI * 2)
+                ctx.arc(screen.x, screen.y, radius + 7, 0, Math.PI * 2)
                 ctx.fillStyle = haloColor
                 ctx.globalAlpha = 0.35
                 ctx.fill()
@@ -566,7 +781,7 @@ export class RoadsCanvasRenderer {
 
             // City Marker Circle
             ctx.beginPath()
-            ctx.arc(node.x, node.y, radius, 0, Math.PI * 2)
+            ctx.arc(screen.x, screen.y, radius, 0, Math.PI * 2)
             ctx.fillStyle = fillColor
             ctx.fill()
             ctx.strokeStyle = strokeColor
@@ -576,9 +791,8 @@ export class RoadsCanvasRenderer {
             // City Name Pill Below Node
             this.drawCityLabel(
                 ctx,
-                theme,
-                node.x,
-                node.y + radius + 3,
+                screen.x,
+                screen.y + radius + 3,
                 node.label,
                 node.state
             )
@@ -587,70 +801,41 @@ export class RoadsCanvasRenderer {
 
     private drawCityLabel(
         ctx: CanvasRenderingContext2D,
-        theme: ThemePalette,
         x: number,
         y: number,
         label: string,
         state?: string
     ): void {
-        ctx.save()
-        ctx.font = 'bold 11px Inter, sans-serif'
-        const metrics = ctx.measureText(label)
-        const padX = 6
-        const padY = 2
-        const pillW = metrics.width + padX * 2
+        const pillW = this.getCityLabelWidth(label)
         const pillH = 16
 
-        // Label pill background for high contrast against map
-        ctx.fillStyle =
-            state === 'start'
-                ? 'rgba(34, 197, 94, 0.9)'
-                : state === 'goal'
-                  ? 'rgba(239, 68, 68, 0.9)'
-                  : state === 'current'
-                    ? 'rgba(180, 83, 9, 0.9)'
-                    : state === 'path'
-                      ? 'rgba(3, 105, 161, 0.9)'
-                      : state === 'in-queue'
-                        ? 'rgba(12, 74, 110, 0.9)'
-                        : state === 'visited'
-                          ? 'rgba(30, 41, 59, 0.9)'
-                          : 'rgba(15, 23, 42, 0.85)'
+        const style = (state && CITY_PILL_STYLES[state]) || DEFAULT_PILL_STYLE
+
+        ctx.save()
+        ctx.fillStyle = style.bg
         ctx.beginPath()
         ctx.roundRect(x - pillW / 2, y, pillW, pillH, 4)
         ctx.fill()
 
-        ctx.strokeStyle =
-            state === 'start'
-                ? '#4ade80'
-                : state === 'goal'
-                  ? '#f87171'
-                  : state === 'current'
-                    ? '#fbbf24'
-                    : state === 'path'
-                      ? '#38bdf8'
-                      : state === 'in-queue'
-                        ? '#38bdf8'
-                        : state === 'visited'
-                          ? '#64748b'
-                          : 'rgba(255, 255, 255, 0.15)'
+        ctx.strokeStyle = style.border
         ctx.lineWidth = 1
         ctx.stroke()
 
+        ctx.font = 'bold 11px Inter, sans-serif'
         ctx.fillStyle = '#ffffff'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
         ctx.fillText(label, x, y + pillH / 2)
-
         ctx.restore()
     }
 
     public destroy(): void {
         this.canvas.removeEventListener('pointerdown', this.onPointerDown)
-        this.canvas.removeEventListener('pointermove', this.onPointerMove)
-        this.canvas.removeEventListener('pointerup', this.onPointerUp)
+        window.removeEventListener('pointermove', this.onPointerMove)
+        window.removeEventListener('pointerup', this.onPointerUp)
         this.canvas.removeEventListener('wheel', this.onWheel)
         this.canvas.removeEventListener('contextmenu', this.onContextMenu)
+        window.removeEventListener('keydown', this.onKeyDown)
         this.unsubscribeTheme?.()
         if (this.animationFrameId !== null) {
             cancelAnimationFrame(this.animationFrameId)

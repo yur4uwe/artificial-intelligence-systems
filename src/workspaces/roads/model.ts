@@ -29,7 +29,49 @@ export default class MapModel extends GraphModel {
         return undefined
     }
 
-    public reloadPreset(coords?: Record<string, { x: number; y: number }>): void {
+    public override addNode(
+        x: number,
+        y: number,
+        label?: string,
+        radius: number = 14
+    ): GraphNode {
+        let maxId = 0
+        this.nodesMap.forEach((_, id) => {
+            if (id > maxId) maxId = id
+        })
+        const newId = maxId + 1
+        const node: GraphNode = {
+            id: newId,
+            label: label ?? `Місто ${newId}`,
+            x,
+            y,
+            radius,
+            state: 'idle',
+        }
+        this.nodesMap.set(newId, node)
+        this.version++
+        return node
+    }
+
+    public renameNode(nodeId: number, newLabel: string): void {
+        const node = this.nodesMap.get(nodeId)
+        if (node) {
+            node.label = newLabel
+            this.version++
+        }
+    }
+
+    public setEdgeWeight(edgeId: string, weight: number): void {
+        const edge = this.edgesList.find((e) => e.id === edgeId)
+        if (edge) {
+            edge.weight = weight
+            this.version++
+        }
+    }
+
+    public reloadPreset(
+        coords?: Record<string, { x: number; y: number }>
+    ): void {
         this.loadData(buildRoadsGraph(coords ?? INITIAL_CITY_COORDINATES))
     }
 }

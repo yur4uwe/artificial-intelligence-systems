@@ -85,6 +85,23 @@ export class RoadsParamsTab {
         this.goalSelect.value = goalCity
     }
 
+    public updateCityList(
+        cities: string[],
+        currentStart?: string,
+        currentGoal?: string
+    ): void {
+        const sortedCities = [...cities].sort((a, b) =>
+            a.localeCompare(b, 'uk')
+        )
+        const cityOptions = sortedCities
+            .map((c) => `<option value="${c}">${c}</option>`)
+            .join('')
+        this.startSelect.innerHTML = cityOptions
+        this.goalSelect.innerHTML = cityOptions
+        if (currentStart) this.startSelect.value = currentStart
+        if (currentGoal) this.goalSelect.value = currentGoal
+    }
+
     public getStartCity(): string {
         return this.startSelect.value
     }

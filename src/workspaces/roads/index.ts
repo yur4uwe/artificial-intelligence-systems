@@ -45,8 +45,10 @@ export default class RoadsWorkspace implements WorkspaceModule {
             this.context.canvas,
             this.model,
             {
-                onNodeClick: (nodeId) => this.handleNodeClick(nodeId),
                 onContextMenu: (e) => this.handleContextMenu(e),
+                onConnectNodes: (fromId, toId) =>
+                    this.handleConnectNodes(fromId, toId),
+                onCanvasChange: () => this.handleCanvasChange(),
             }
         )
 
@@ -93,6 +95,7 @@ export default class RoadsWorkspace implements WorkspaceModule {
 
         // 7. Initial algorithm wiring and visual synchronization
         this.updateAlgorithm()
+        this.syncCityDropdowns()
         this.syncStartAndGoalVisuals()
     }
 
@@ -195,6 +198,15 @@ export default class RoadsWorkspace implements WorkspaceModule {
             }
 
             case 'finish-found': {
+                if (
+                    this.previousCurrentId !== null &&
+                    this.previousCurrentId !== startId &&
+                    this.previousCurrentId !== goalId
+                ) {
+                    this.model.setNodeState(this.previousCurrentId, 'visited')
+                }
+                this.previousCurrentId = null
+
                 // Revert any active edges
                 for (const edge of this.model.getEdges()) {
                     if (edge.state === 'active') {
@@ -252,8 +264,7 @@ export default class RoadsWorkspace implements WorkspaceModule {
         mimeType: string
     } {
         const history = this.runner.getHistory()
-        const metrics =
-            this.lastMetrics ??
+        const metrics = this.lastMetrics ??
             this.algorithm?.runPure() ?? {
                 foundPath: null,
                 pathCities: [],
@@ -278,15 +289,6 @@ export default class RoadsWorkspace implements WorkspaceModule {
         return this.renderer.getCanvasElement()
     }
 
-    private handleNodeClick(nodeId: number): void {
-        const node = this.model.getNode(nodeId)
-        if (!node) return
-
-        if (node.label !== this.startCity) {
-            this.setGoalCity(node.label)
-        }
-    }
-
     private handleContextMenu(e: RoadsContextMenuEvent): void {
         const items: ContextMenuItem[] = []
 
@@ -300,13 +302,58 @@ export default class RoadsWorkspace implements WorkspaceModule {
                 {
                     label: `Встановити як Ціль: ${node.label}`,
                     action: () => this.setGoalCity(node.label),
+                },
+                {
+                    label: "З'єднати дорогою",
+                    divider: true,
+                    action: () => {
+                        this.renderer.setEdgeSource(node.id)
+                    },
+                },
+                {
+                    label: 'Перейменувати місто',
+                    action: () => this.handleRenameCity(node.id),
+                },
+                {
+                    label: 'Видалити місто',
+                    danger: true,
+                    divider: true,
+                    action: () => this.handleDeleteCity(node.id),
+                }
+            )
+        } else if (e.target.type === 'edge') {
+            const edge = e.target.edge
+            const fromNode = this.model.getNode(edge.from)
+            const toNode = this.model.getNode(edge.to)
+            const fromName = fromNode?.label ?? `ID ${edge.from}`
+            const toName = toNode?.label ?? `ID ${edge.to}`
+
+            items.push(
+                {
+                    label: `Змінити відстань (${fromName} — ${toName})`,
+                    action: () => this.handleEditEdgeWeight(edge.id),
+                },
+                {
+                    label: 'Видалити автошлях',
+                    danger: true,
+                    divider: true,
+                    action: () => this.handleDeleteEdge(edge.id),
                 }
             )
         } else {
             items.push(
                 {
+                    label: 'Додати місто тут',
+                    action: () => this.handleAddCity(e.worldX, e.worldY),
+                },
+                {
                     label: 'Центрувати та вписати карту',
+                    divider: true,
                     action: () => this.renderer.fitMapToViewport(),
+                },
+                {
+                    label: 'Скинути масштаб (1:1)',
+                    action: () => this.renderer.resetView(),
                 },
                 {
                     label: `${this.renderer.isMapVisible() ? 'Сховати' : 'Показати'} підкладку карти`,
@@ -316,6 +363,172 @@ export default class RoadsWorkspace implements WorkspaceModule {
         }
 
         this.contextMenu.show(e.clientX, e.clientY, items)
+    }
+
+    private handleAddCity(worldX: number, worldY: number): void {
+        const input = window.prompt('Введіть назву міста:')
+        if (input === null) return
+        const name = input.trim()
+        if (!name) {
+            window.alert('Назва міста не може бути порожньою.')
+            return
+        }
+        if (this.model.findNodeByCityName(name)) {
+            window.alert(`Місто з назвою "${name}" вже існує.`)
+            return
+        }
+
+        this.model.addNode(worldX, worldY, name)
+        this.syncCityDropdowns()
+        this.handleCanvasChange()
+    }
+
+    private handleRenameCity(nodeId: number): void {
+        const node = this.model.getNode(nodeId)
+        if (!node) return
+
+        const oldName = node.label
+        const input = window.prompt('Введіть нову назву міста:', oldName)
+        if (input === null) return
+        const newName = input.trim()
+        if (!newName) {
+            window.alert('Назва міста не може бути порожньою.')
+            return
+        }
+        if (newName === oldName) return
+
+        if (this.model.findNodeByCityName(newName)) {
+            window.alert(`Місто з назвою "${newName}" вже існує.`)
+            return
+        }
+
+        this.model.renameNode(nodeId, newName)
+        if (this.startCity === oldName) {
+            this.startCity = newName
+        }
+        if (this.goalCity === oldName) {
+            this.goalCity = newName
+        }
+
+        this.syncCityDropdowns()
+        this.handleCanvasChange()
+    }
+
+    private handleDeleteCity(nodeId: number): void {
+        const node = this.model.getNode(nodeId)
+        if (!node) return
+
+        const confirmed = window.confirm(
+            `Ви дійсно бажаєте видалити місто "${node.label}" та всі пов'язані дороги?`
+        )
+        if (!confirmed) return
+
+        const deletedName = node.label
+        this.model.removeNode(nodeId)
+
+        const remaining = this.model.getNodes()
+        if (this.startCity === deletedName) {
+            const fallback = remaining.find((n) => n.label !== this.goalCity)
+            this.startCity = fallback?.label ?? ''
+        }
+        if (this.goalCity === deletedName) {
+            const fallback = remaining.find((n) => n.label !== this.startCity)
+            this.goalCity = fallback?.label ?? ''
+        }
+
+        this.syncCityDropdowns()
+        this.handleCanvasChange()
+    }
+
+    private handleConnectNodes(fromId: number, toId: number): void {
+        const from = this.model.getNode(fromId)
+        const to = this.model.getNode(toId)
+        if (!from || !to) return
+
+        const input = window.prompt(
+            `Введіть відстань дороги між "${from.label}" та "${to.label}" (км):`
+        )
+        if (input === null) return
+        const trimmed = input.trim()
+        if (!trimmed) {
+            window.alert(
+                'Відстань не може бути порожньою. Автошлях без відстані є недійсним.'
+            )
+            return
+        }
+        const weight = parseFloat(trimmed)
+        if (isNaN(weight) || weight <= 0) {
+            window.alert(
+                'Некоректна відстань. Відстань повинна бути додатним числом.'
+            )
+            return
+        }
+
+        this.model.addEdge(fromId, toId, false, weight)
+        this.handleCanvasChange()
+    }
+
+    private handleEditEdgeWeight(edgeId: string): void {
+        const edge = this.model.getEdges().find((e) => e.id === edgeId)
+        if (!edge) return
+
+        const from = this.model.getNode(edge.from)
+        const to = this.model.getNode(edge.to)
+        const fromLabel = from?.label ?? `ID ${edge.from}`
+        const toLabel = to?.label ?? `ID ${edge.to}`
+
+        const input = window.prompt(
+            `Введіть нову відстань автошляху "${fromLabel} — ${toLabel}" (км):`,
+            String(edge.weight ?? '')
+        )
+        if (input === null) return
+        const trimmed = input.trim()
+        if (!trimmed) {
+            window.alert(
+                'Відстань не може бути порожньою. Автошлях без відстані є недійсним.'
+            )
+            return
+        }
+        const weight = parseFloat(trimmed)
+        if (isNaN(weight) || weight <= 0) {
+            window.alert(
+                'Некоректна відстань. Відстань повинна бути додатним числом.'
+            )
+            return
+        }
+
+        this.model.setEdgeWeight(edgeId, weight)
+        this.handleCanvasChange()
+    }
+
+    private handleDeleteEdge(edgeId: string): void {
+        const edge = this.model.getEdges().find((e) => e.id === edgeId)
+        if (!edge) return
+
+        const from = this.model.getNode(edge.from)
+        const to = this.model.getNode(edge.to)
+        const fromLabel = from?.label ?? `ID ${edge.from}`
+        const toLabel = to?.label ?? `ID ${edge.to}`
+
+        const confirmed = window.confirm(
+            `Ви дійсно бажаєте видалити автошлях "${fromLabel} — ${toLabel}"?`
+        )
+        if (!confirmed) return
+
+        this.model.removeEdge(edgeId)
+        this.handleCanvasChange()
+    }
+
+    private handleCanvasChange(): void {
+        this.runner.reset()
+        this.updateAlgorithm()
+        this.syncStartAndGoalVisuals()
+        this.renderer.requestRender()
+    }
+
+    private syncCityDropdowns(): void {
+        const cities = this.model.getNodes().map((n) => n.label)
+        this.paramsTab.updateCityList(cities, this.startCity, this.goalCity)
     }
 
     private setStartCity(cityName: string): void {
