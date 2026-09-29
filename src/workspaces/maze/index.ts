@@ -19,6 +19,7 @@ import WaveBiBatchAlgorithm from '@/algorithms/maze/wave-bi-batch'
 
 import { ContextMenu, ContextMenuItem } from '@common/ui/context-menu'
 import { MazeContextMenuEvent } from './drawing/grid-renderer'
+import { BaseMazeSearch } from '@/algorithms/maze/base'
 
 export default class MazeWorkspace implements WorkspaceModule {
     public id = 'maze-workspace'
@@ -363,9 +364,13 @@ export default class MazeWorkspace implements WorkspaceModule {
         if (event.updatedCell) {
             const { coord, dist, wave } = event.updatedCell
             if (wave === 'forward') {
-                this.model.setVisualInfo(coord.r, coord.c, { forwardDist: dist })
+                this.model.setVisualInfo(coord.r, coord.c, {
+                    forwardDist: dist,
+                })
             } else {
-                this.model.setVisualInfo(coord.r, coord.c, { backwardDist: dist })
+                this.model.setVisualInfo(coord.r, coord.c, {
+                    backwardDist: dist,
+                })
             }
         }
         if (event.updatedCells) {

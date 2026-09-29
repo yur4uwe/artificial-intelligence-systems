@@ -55,10 +55,10 @@ export interface EdgeValidationResult {
 }
 
 export class GraphModel {
-    private nodesMap: Map<number, GraphNode> = new Map()
-    private edgesList: GraphEdge[] = []
-    private constraints: GraphConstraints = DEFAULT_GRAPH_CONSTRAINTS
-    private version: number = 0
+    protected nodesMap: Map<number, GraphNode> = new Map()
+    protected edgesList: GraphEdge[] = []
+    protected constraints: GraphConstraints = DEFAULT_GRAPH_CONSTRAINTS
+    protected version: number = 0
 
     constructor(
         initialData?: GraphData,

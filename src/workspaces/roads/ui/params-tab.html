@@ -1,0 +1,135 @@
+<div class="flex flex-col gap-3 text-xs">
+    <!-- Route Selection (Start & Goal) -->
+    <div
+        class="border rounded-xl p-3 shadow-md"
+        style="
+            background-color: var(--color-bg-app);
+            border-color: var(--color-border-subtle);
+        "
+    >
+        <div class="flex items-center justify-between mb-2">
+            <span class="font-semibold" style="color: var(--color-text-primary)"
+                >Вибір маршруту (Дейкстра)</span
+            >
+            <button
+                id="roads-btn-swap"
+                title="Поміняти місцями Start та Goal"
+                class="flex items-center gap-1 px-2 py-1 rounded border font-medium transition active:scale-95 text-[11px]"
+                style="
+                    background-color: var(--color-bg-surface);
+                    border-color: var(--color-border-muted);
+                    color: var(--color-accent-primary);
+                "
+            >
+                <span>Поміняти</span>
+            </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+            <div>
+                <span
+                    class="text-[11px] block mb-1 font-medium text-emerald-400"
+                    >Старт (Start):</span
+                >
+                <select
+                    id="roads-start-select"
+                    class="w-full border rounded-lg px-2.5 py-1.5 text-xs font-medium outline-none cursor-pointer"
+                    style="
+                        background-color: var(--color-bg-surface);
+                        border-color: var(--color-border-muted);
+                        color: var(--color-text-primary);
+                    "
+                >
+                    <!-- Populated dynamically -->
+                </select>
+            </div>
+
+            <div>
+                <span class="text-[11px] block mb-1 font-medium text-rose-400"
+                    >Ціль (Goal):</span
+                >
+                <select
+                    id="roads-goal-select"
+                    class="w-full border rounded-lg px-2.5 py-1.5 text-xs font-medium outline-none cursor-pointer"
+                    style="
+                        background-color: var(--color-bg-surface);
+                        border-color: var(--color-border-muted);
+                        color: var(--color-text-primary);
+                    "
+                >
+                    <!-- Populated dynamically -->
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Map & View Controls -->
+    <div
+        class="border rounded-xl p-3 shadow-md"
+        style="
+            background-color: var(--color-bg-app);
+            border-color: var(--color-border-subtle);
+        "
+    >
+        <div class="flex items-center justify-between gap-2 mb-2">
+            <span class="font-semibold" style="color: var(--color-text-primary)">
+                Відображення
+            </span>
+            <button
+                id="roads-btn-fit-view"
+                title="Масштабувати карту для повного огляду"
+                class="px-2.5 py-1 rounded-lg border font-medium text-center transition active:scale-95 flex items-center justify-center gap-1 text-[11px]"
+                style="
+                    background-color: var(--color-bg-surface);
+                    border-color: var(--color-border-muted);
+                    color: var(--color-text-primary);
+                "
+            >
+                <span>Центрувати</span>
+            </button>
+        </div>
+
+        <div class="pt-2 border-t flex items-center justify-between" style="border-color: var(--color-border-subtle)">
+            <label
+                class="flex items-center gap-1.5 cursor-pointer text-[11px]"
+                style="color: var(--color-text-secondary)"
+            >
+                <input
+                    type="checkbox"
+                    id="roads-check-show-map"
+                    checked
+                    class="accent-indigo-500"
+                />
+                <span>Підкладка карти України</span>
+            </label>
+        </div>
+    </div>
+
+    <!-- Quick Hints -->
+    <div
+        class="border rounded-xl p-3 shadow-md text-[11px] leading-relaxed"
+        style="
+            background-color: var(--color-bg-app);
+            border-color: var(--color-border-subtle);
+            color: var(--color-text-secondary);
+        "
+    >
+        <span
+            class="font-semibold block mb-1"
+            style="color: var(--color-text-primary)"
+            >Керування:</span
+        >
+        <ul class="list-disc pl-4 space-y-1">
+            <li>
+                <strong>Клік по місту:</strong> вибір для інспекції або маршруту.
+            </li>
+            <li>
+                <strong>Правий клік (Контекстне меню):</strong> призначення Старту або Цілі.
+            </li>
+            <li><strong>Колесо миші:</strong> наближення або віддалення.</li>
+            <li>
+                <strong>Перетягування карти:</strong> затисніть ліву кнопку на порожньому місці для панорамування.
+            </li>
+        </ul>
+    </div>
+</div>
