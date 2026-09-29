@@ -1,11 +1,18 @@
 import { RunnableAlgorithm } from '@/common/engine/search-runner'
-import { DijkstraMetrics, DijkstraOptions, DijkstraStepEvent } from './types'
+import { StepStatus } from '@/types'
+import {
+    DijkstraMetrics,
+    DijkstraOptions,
+    DijkstraStepEvent,
+    DijkstraStepType,
+} from './types'
 
 export class DijkstraAlgorithm implements RunnableAlgorithm<DijkstraStepEvent> {
     private options: DijkstraOptions
     private generator: Generator<DijkstraStepEvent, void, unknown> | null = null
     private metrics: DijkstraMetrics | null = null
     private isDone: boolean = false
+    private benchmarkCache = new Map<string, number>()
 
     constructor(options: DijkstraOptions) {
         this.options = { ...options }
@@ -53,74 +60,154 @@ export class DijkstraAlgorithm implements RunnableAlgorithm<DijkstraStepEvent> {
     }
 
     public setOptions(options: Partial<DijkstraOptions>): void {
+        if (options.model && options.model !== this.options.model) {
+            this.benchmarkCache.clear()
+        }
         Object.assign(this.options, options)
         this.reset()
     }
 
+    public clearBenchmarkCache(): void {
+        this.benchmarkCache.clear()
+    }
+
+    /**
+     * Micro-benchmark with JIT warm-up and instance-level caching.
+     */
+    public benchmark(iterations: number = 200): number {
+        const { model, startId, goalId } = this.options
+        const key = `${model.getVersion()}_${startId}_${goalId}`
+
+        const cached = this.benchmarkCache.get(key)
+        if (cached !== undefined) {
+            return cached
+        }
+
+        // JIT warm-up
+        for (let i = 0; i < 15; i++) {
+            this.runPure()
+        }
+
+        const t0 = performance.now()
+        for (let i = 0; i < iterations; i++) {
+            this.runPure()
+        }
+        const totalMs = performance.now() - t0
+        const avgDurationMs = totalMs / iterations
+
+        this.benchmarkCache.set(key, avgDurationMs)
+        return avgDurationMs
+    }
+
+    private reconstructPath(
+        goalId: number,
+        parentMap: Map<number, number>
+    ): { path: number[]; pathCities: string[] } {
+        const path: number[] = []
+        let curr: number | undefined = goalId
+        while (curr !== undefined) {
+            path.unshift(curr)
+            curr = parentMap.get(curr)
+        }
+        const pathCities = path.map(
+            (id) => this.options.model.getNode(id)?.label ?? `v${id}`
+        )
+        return { path, pathCities }
+    }
+
     private *generateSteps(): Generator<DijkstraStepEvent, void, unknown> {
-        const startTime = performance.now()
         const { model, startId, goalId } = this.options
         const startNode = model.getNode(startId)
         const goalNode = model.getNode(goalId)
 
+        let stepCount = 0
+        let currentW: number | null = startId
+        let relaxationsCount = 0
+        const settled = new Set<number>()
+        const visitedOrder: number[] = []
+
+        // Local helper constructing step events and auto-incrementing stepCount
+        const makeStep = (
+            type: DijkstraStepType,
+            actionDescription: string,
+            extra: Partial<DijkstraStepEvent> = {},
+            status: StepStatus = 'running'
+        ): DijkstraStepEvent => ({
+            type,
+            stepIndex: ++stepCount,
+            currentNodeId: currentW,
+            actionDescription,
+            status,
+            ...extra,
+        })
+
+        // Local helper constructing metrics using closure state
+        const makeMetrics = (
+            statusText: string,
+            isSuccess: boolean,
+            extra: Partial<DijkstraMetrics> = {}
+        ): DijkstraMetrics => ({
+            foundPath: null,
+            pathCities: [],
+            totalDistanceKm: 0,
+            settledCount: settled.size,
+            relaxationsCount,
+            executionTimeMs:
+                extra.executionTimeMs ??
+                (startNode && goalNode ? this.benchmark() : 0),
+            visitedOrder,
+            isSuccess,
+            statusText,
+            ...extra,
+        })
+
         if (!startNode || !goalNode) {
             const statusText =
                 'Помилка: Початкова або цільова вершина не знайдена в графі'
-            this.metrics = {
-                foundPath: null,
-                pathCities: [],
-                totalDistanceKm: 0,
-                settledCount: 0,
-                relaxationsCount: 0,
-                executionTimeMs: 0,
-                visitedOrder: [],
-                isSuccess: false,
+            this.metrics = makeMetrics(statusText, false)
+            yield makeStep(
+                'finish-none',
                 statusText,
-            }
-            yield {
-                type: 'finish-none',
-                stepIndex: 1,
-                currentNodeId: null,
-                actionDescription: statusText,
-                status: 'not-found',
-            }
+                { currentNodeId: null },
+                'not-found'
+            )
             return
         }
 
+        // 1. Initial distance map (labels): 0 for start, Infinity for others
         const dist = new Map<number, number>()
         for (const node of model.getNodes()) {
             dist.set(node.id, Infinity)
         }
         dist.set(startId, 0)
 
+        // 2. Parent pointers for route backtracking
         const parentMap = new Map<number, number>()
 
+        // 3. Candidate unexpanded vertices list (sorted by label value)
         const unexpandedList: number[] = [startId]
-        const settled = new Set<number>()
-        const visitedOrder: number[] = []
-        let relaxationsCount = 0
 
-        // Count the initial state step
-        let stepCount = 1
+        // Step 1: Initial state
+        yield makeStep(
+            'init',
+            `Ініціалізація: початковій вершині "${startNode.label}" присвоєно числову мітку 0 км. Поміщено у список нерозкритих вершин.`,
+            {
+                relaxedDistance: {
+                    nodeId: startId,
+                    dist: 0,
+                },
+            }
+        )
 
-        yield {
-            type: 'init',
-            stepIndex: stepCount,
-            currentNodeId: startId,
-            relaxedDistance: {
-                nodeId: startId,
-                dist: 0,
-            },
-            actionDescription: `Ініціалізація: початковій вершині "${startNode.label}" присвоєно числову мітку 0 км. Поміщено у список нерозкритих вершин.`,
-            status: 'running',
-        }
-
+        // Iterative search loop
         while (unexpandedList.length > 0) {
+            // Sort unexpanded list by ascending distance label (professor's specification)
             unexpandedList.sort(
                 (a, b) => (dist.get(a) ?? Infinity) - (dist.get(b) ?? Infinity)
             )
 
-            const currentW = unexpandedList.shift()!
+            // Select the first vertex from the unexpanded list (minimal label W-vertex)
+            currentW = unexpandedList.shift()!
             const currentDist = dist.get(currentW) ?? Infinity
 
             if (currentDist === Infinity) {
@@ -134,61 +221,47 @@ export class DijkstraAlgorithm implements RunnableAlgorithm<DijkstraStepEvent> {
             const wNode = model.getNode(currentW)
             const wLabel = wNode?.label ?? `v${currentW}`
 
+            // Check goal condition prior to expanding W (professor's requirement)
             if (currentW === goalId) {
                 settled.add(currentW)
                 visitedOrder.push(currentW)
 
-                const path: number[] = []
-                let curr: number | undefined = goalId
-                while (curr !== undefined) {
-                    path.unshift(curr)
-                    curr = parentMap.get(curr)
-                }
-
-                const pathCities = path.map(
-                    (id) => model.getNode(id)?.label ?? `v${id}`
+                const { path, pathCities } = this.reconstructPath(
+                    goalId,
+                    parentMap
                 )
-                const endTime = performance.now()
-                const executionTimeMs = Math.max(0.01, endTime - startTime)
+                const desc = `Цільову вершину "${goalNode.label}" знайдено! Найкоротший маршрут (${currentDist} км): ${pathCities.join(' -> ')}.`
 
-                this.metrics = {
+                this.metrics = makeMetrics(desc, true, {
                     foundPath: path,
                     pathCities,
                     totalDistanceKm: currentDist,
-                    settledCount: settled.size,
-                    relaxationsCount,
-                    executionTimeMs,
-                    visitedOrder,
-                    isSuccess: true,
-                    statusText: `Цільову вершину "${goalNode.label}" знайдено. Довжина найкоротшого шляху: ${currentDist} км.`,
-                }
+                })
 
-                stepCount++
-                yield {
-                    type: 'finish-found',
-                    stepIndex: stepCount,
-                    currentNodeId: goalId,
-                    settledNodeId: goalId,
-                    foundPath: path,
-                    totalDistanceKm: currentDist,
-                    actionDescription: `Цільову вершину "${goalNode.label}" знайдено! Найкоротший маршрут (${currentDist} км): ${pathCities.join(' -> ')}.`,
-                    status: 'found',
-                }
+                yield makeStep(
+                    'finish-found',
+                    desc,
+                    {
+                        settledNodeId: goalId,
+                        foundPath: path,
+                        totalDistanceKm: currentDist,
+                    },
+                    'found'
+                )
                 return
             }
 
+            // Mark W as settled (expanded)
             settled.add(currentW)
             visitedOrder.push(currentW)
 
-            stepCount++
-            yield {
-                type: 'settle-node',
-                stepIndex: stepCount,
-                currentNodeId: currentW,
-                settledNodeId: currentW,
-                actionDescription: `Розкриття W-вершини "${wLabel}" (остаточна мітка: ${currentDist} км). Огляд суміжних автошляхів.`,
-                status: 'running',
-            }
+            yield makeStep(
+                'settle-node',
+                `Розкриття W-вершини "${wLabel}" (остаточна мітка: ${currentDist} км). Огляд суміжних автошляхів.`,
+                {
+                    settledNodeId: currentW,
+                }
+            )
 
             // Inspect adjacent highways
             const neighbors = model.getNeighbors(currentW)
@@ -204,31 +277,35 @@ export class DijkstraAlgorithm implements RunnableAlgorithm<DijkstraStepEvent> {
 
                 const oldDist = dist.get(neighborId) ?? Infinity
                 const newDist = currentDist + edgeWeight
+
+                // Guard clause: skip if route is not strictly shorter
+                if (newDist >= oldDist) {
+                    continue
+                }
+
                 const neighborNode = model.getNode(neighborId)
                 const neighborLabel = neighborNode?.label ?? `v${neighborId}`
 
-                // Relaxation condition: if new route is strictly shorter
-                if (newDist < oldDist) {
-                    relaxationsCount++
-                    dist.set(neighborId, newDist)
-                    parentMap.set(neighborId, currentW)
+                relaxationsCount++
+                dist.set(neighborId, newDist)
+                parentMap.set(neighborId, currentW)
 
-                    if (!unexpandedList.includes(neighborId)) {
-                        unexpandedList.push(neighborId)
-                    }
+                if (!unexpandedList.includes(neighborId)) {
+                    unexpandedList.push(neighborId)
+                }
 
-                    // Keep unexpanded list sorted
-                    unexpandedList.sort(
-                        (a, b) =>
-                            (dist.get(a) ?? Infinity) -
-                            (dist.get(b) ?? Infinity)
-                    )
+                // Keep unexpanded list sorted
+                unexpandedList.sort(
+                    (a, b) =>
+                        (dist.get(a) ?? Infinity) - (dist.get(b) ?? Infinity)
+                )
 
-                    stepCount++
-                    yield {
-                        type: 'relax-edge',
-                        stepIndex: stepCount,
-                        currentNodeId: currentW,
+                yield makeStep(
+                    'relax-edge',
+                    oldDist === Infinity
+                        ? `Автошлях "${wLabel}" -> "${neighborLabel}" (${edgeWeight} км): присвоєно числову мітку ${newDist} км. Вершину додано до списку нерозкритих.`
+                        : `Зменшення мітки: автошлях "${wLabel}" -> "${neighborLabel}" (${edgeWeight} км): нове значення ${newDist} км (було ${oldDist} км).`,
+                    {
                         activeEdge: {
                             from: currentW,
                             to: neighborId,
@@ -240,62 +317,56 @@ export class DijkstraAlgorithm implements RunnableAlgorithm<DijkstraStepEvent> {
                             prevDist:
                                 oldDist === Infinity ? undefined : oldDist,
                         },
-                        actionDescription:
-                            oldDist === Infinity
-                                ? `Автошлях "${wLabel}" -> "${neighborLabel}" (${edgeWeight} км): присвоєно числову мітку ${newDist} км. Вершину додано до списку нерозкритих.`
-                                : `Зменшення мітки: автошлях "${wLabel}" -> "${neighborLabel}" (${edgeWeight} км): нове значення ${newDist} км (було ${oldDist} км).`,
-                        status: 'running',
                     }
-                }
+                )
             }
         }
 
         // If unexpanded list empties without reaching goal
-        const endTime = performance.now()
-        const executionTimeMs = Math.max(0.01, endTime - startTime)
         const statusText = `Список нерозкритих вершин вичерпано. Цільова вершина "${goalNode.label}" недосяжна з "${startNode.label}".`
 
-        this.metrics = {
+        this.metrics = makeMetrics(statusText, false)
+
+        yield makeStep(
+            'finish-none',
+            statusText,
+            { currentNodeId: null },
+            'not-found'
+        )
+    }
+
+    public runPure(): DijkstraMetrics {
+        const { model, startId, goalId } = this.options
+        const startNode = model.getNode(startId)
+        const goalNode = model.getNode(goalId)
+
+        let relaxationsCount = 0
+        const settled = new Set<number>()
+        const visitedOrder: number[] = []
+
+        // Local helper constructing metrics using closure state
+        const makeMetrics = (
+            statusText: string,
+            isSuccess: boolean,
+            extra: Partial<DijkstraMetrics> = {}
+        ): DijkstraMetrics => ({
             foundPath: null,
             pathCities: [],
             totalDistanceKm: 0,
             settledCount: settled.size,
             relaxationsCount,
-            executionTimeMs,
+            executionTimeMs: 0,
             visitedOrder,
-            isSuccess: false,
+            isSuccess,
             statusText,
-        }
-
-        stepCount++
-        yield {
-            type: 'finish-none',
-            stepIndex: stepCount,
-            currentNodeId: null,
-            actionDescription: statusText,
-            status: 'not-found',
-        }
-    }
-
-    public runPure(): DijkstraMetrics {
-        const startTime = performance.now()
-        const { model, startId, goalId } = this.options
-        const startNode = model.getNode(startId)
-        const goalNode = model.getNode(goalId)
+            ...extra,
+        })
 
         if (!startNode || !goalNode) {
-            return {
-                foundPath: null,
-                pathCities: [],
-                totalDistanceKm: 0,
-                settledCount: 0,
-                relaxationsCount: 0,
-                executionTimeMs: 0,
-                visitedOrder: [],
-                isSuccess: false,
-                statusText:
-                    'Помилка: Початкова або цільова вершина не знайдена в графі',
-            }
+            return makeMetrics(
+                'Помилка: Початкова або цільова вершина не знайдена в графі',
+                false
+            )
         }
 
         const dist = new Map<number, number>()
@@ -306,9 +377,6 @@ export class DijkstraAlgorithm implements RunnableAlgorithm<DijkstraStepEvent> {
 
         const parentMap = new Map<number, number>()
         const unexpandedList: number[] = [startId]
-        const settled = new Set<number>()
-        const visitedOrder: number[] = []
-        let relaxationsCount = 0
 
         while (unexpandedList.length > 0) {
             unexpandedList.sort(
@@ -329,29 +397,19 @@ export class DijkstraAlgorithm implements RunnableAlgorithm<DijkstraStepEvent> {
                 settled.add(currentW)
                 visitedOrder.push(currentW)
 
-                const path: number[] = []
-                let curr: number | undefined = goalId
-                while (curr !== undefined) {
-                    path.unshift(curr)
-                    curr = parentMap.get(curr)
-                }
-
-                const pathCities = path.map(
-                    (id) => model.getNode(id)?.label ?? `v${id}`
+                const { path, pathCities } = this.reconstructPath(
+                    goalId,
+                    parentMap
                 )
-                const endTime = performance.now()
-
-                return {
-                    foundPath: path,
-                    pathCities,
-                    totalDistanceKm: currentDist,
-                    settledCount: settled.size,
-                    relaxationsCount,
-                    executionTimeMs: Math.max(0.01, endTime - startTime),
-                    visitedOrder,
-                    isSuccess: true,
-                    statusText: `Цільову вершину "${goalNode.label}" знайдено. Довжина найкоротшого шляху: ${currentDist} км.`,
-                }
+                return makeMetrics(
+                    `Цільову вершину "${goalNode.label}" знайдено. Довжина найкоротшого шляху: ${currentDist} км.`,
+                    true,
+                    {
+                        foundPath: path,
+                        pathCities,
+                        totalDistanceKm: currentDist,
+                    }
+                )
             }
 
             settled.add(currentW)
@@ -371,30 +429,25 @@ export class DijkstraAlgorithm implements RunnableAlgorithm<DijkstraStepEvent> {
                 const oldDist = dist.get(neighborId) ?? Infinity
                 const newDist = currentDist + edgeWeight
 
-                if (newDist < oldDist) {
-                    relaxationsCount++
-                    dist.set(neighborId, newDist)
-                    parentMap.set(neighborId, currentW)
+                // Guard clause: skip if route is not strictly shorter
+                if (newDist >= oldDist) {
+                    continue
+                }
 
-                    if (!unexpandedList.includes(neighborId)) {
-                        unexpandedList.push(neighborId)
-                    }
+                relaxationsCount++
+                dist.set(neighborId, newDist)
+                parentMap.set(neighborId, currentW)
+
+                if (!unexpandedList.includes(neighborId)) {
+                    unexpandedList.push(neighborId)
                 }
             }
         }
 
-        const endTime = performance.now()
-        return {
-            foundPath: null,
-            pathCities: [],
-            totalDistanceKm: 0,
-            settledCount: settled.size,
-            relaxationsCount,
-            executionTimeMs: Math.max(0.01, endTime - startTime),
-            visitedOrder,
-            isSuccess: false,
-            statusText: `Список нерозкритих вершин вичерпано. Цільова вершина "${goalNode.label}" недосяжна з "${startNode.label}".`,
-        }
+        return makeMetrics(
+            `Список нерозкритих вершин вичерпано. Цільова вершина "${goalNode.label}" недосяжна з "${startNode.label}".`,
+            false
+        )
     }
 }
 

@@ -538,6 +538,11 @@ export class RoadsCanvasRenderer {
                     strokeColor = nodeColors.path.stroke
                     fillColor = nodeColors.path.fillGradientStart
                     break
+                case 'in-queue':
+                    haloColor = nodeColors.inQueue.glow
+                    strokeColor = nodeColors.inQueue.stroke
+                    fillColor = nodeColors.inQueue.fillGradientStart
+                    break
                 case 'visited':
                     strokeColor = nodeColors.visited.stroke
                     fillColor = nodeColors.visited.fillGradientStart
@@ -602,7 +607,15 @@ export class RoadsCanvasRenderer {
                 ? 'rgba(34, 197, 94, 0.9)'
                 : state === 'goal'
                   ? 'rgba(239, 68, 68, 0.9)'
-                  : 'rgba(15, 23, 42, 0.85)'
+                  : state === 'current'
+                    ? 'rgba(180, 83, 9, 0.9)'
+                    : state === 'path'
+                      ? 'rgba(3, 105, 161, 0.9)'
+                      : state === 'in-queue'
+                        ? 'rgba(12, 74, 110, 0.9)'
+                        : state === 'visited'
+                          ? 'rgba(30, 41, 59, 0.9)'
+                          : 'rgba(15, 23, 42, 0.85)'
         ctx.beginPath()
         ctx.roundRect(x - pillW / 2, y, pillW, pillH, 4)
         ctx.fill()
@@ -612,7 +625,15 @@ export class RoadsCanvasRenderer {
                 ? '#4ade80'
                 : state === 'goal'
                   ? '#f87171'
-                  : 'rgba(255, 255, 255, 0.15)'
+                  : state === 'current'
+                    ? '#fbbf24'
+                    : state === 'path'
+                      ? '#38bdf8'
+                      : state === 'in-queue'
+                        ? '#38bdf8'
+                        : state === 'visited'
+                          ? '#64748b'
+                          : 'rgba(255, 255, 255, 0.15)'
         ctx.lineWidth = 1
         ctx.stroke()
 

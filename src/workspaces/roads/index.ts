@@ -179,6 +179,18 @@ export default class RoadsWorkspace implements WorkspaceModule {
                         'active'
                     )
                 }
+
+                // Mark the newly relaxed candidate city as 'in-queue' (unsettled)
+                if (
+                    event.relaxedDistance &&
+                    event.relaxedDistance.nodeId !== startId &&
+                    event.relaxedDistance.nodeId !== goalId
+                ) {
+                    this.model.setNodeState(
+                        event.relaxedDistance.nodeId,
+                        'in-queue'
+                    )
+                }
                 break
             }
 
