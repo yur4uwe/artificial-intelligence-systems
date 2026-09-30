@@ -84,12 +84,12 @@ export default class WaveBiBatchAlgorithm extends BaseMazeSearch {
 
         let cyclesCount = 0
         let openedCount = 0
+        let isForward = true
 
         while (frontierF.length > 0 && frontierB.length > 0) {
             cyclesCount++
 
-            // Expand from smaller frontier for optimal balance
-            const isForward = frontierF.length <= frontierB.length
+            // Move a single frontier alternating sequentially without deciding which to move
             const activeFrontier = isForward ? frontierF : frontierB
             const activeVisited = isForward ? visitedF : visitedB
             const oppositeVisited = isForward ? visitedB : visitedF
@@ -136,6 +136,8 @@ export default class WaveBiBatchAlgorithm extends BaseMazeSearch {
                     meetingPoint: meeting,
                 }
             }
+
+            isForward = !isForward
         }
 
         return {
@@ -163,9 +165,8 @@ export default class WaveBiBatchAlgorithm extends BaseMazeSearch {
 
         this.cycleCounter++
 
-        // Select smaller frontier for balance
-        const isForward = this.frontierF.length <= this.frontierB.length
-        this.activeWave = isForward ? 'forward' : 'backward'
+        // Move a single frontier alternating sequentially without deciding which to move
+        const isForward = this.activeWave === 'forward'
         const activeFrontier = isForward ? this.frontierF : this.frontierB
         const activeDistGrid = isForward ? this.distGridF : this.distGridB
         const oppositeDistGrid = isForward ? this.distGridB : this.distGridF
@@ -220,6 +221,9 @@ export default class WaveBiBatchAlgorithm extends BaseMazeSearch {
             return this.finalizeFound(meetingPoint, updatedCells)
         }
 
+        // Toggle active wave for the next step
+        this.activeWave = isForward ? 'backward' : 'forward'
+
         if (this.frontierF.length === 0 || this.frontierB.length === 0) {
             return this.finalizeNotFound()
         }
@@ -247,6 +251,7 @@ export default class WaveBiBatchAlgorithm extends BaseMazeSearch {
 
     public reset(): void {
         this.isInitialized = false
+        this.activeWave = 'forward'
         this.frontierF = []
         this.frontierB = []
         this.parentMapF.clear()
@@ -382,6 +387,7 @@ export default class WaveBiBatchAlgorithm extends BaseMazeSearch {
         }
 
         // Standard initialization: start and goal wavefronts
+        this.activeWave = 'forward'
         this.distGridF[start.r * this.cols + start.c] = 0
         this.distGridB[goal.r * this.cols + goal.c] = 0
         this.frontierF = [start]
