@@ -20,9 +20,6 @@ export default class WaveBiBatchAlgorithm extends BaseMazeSearch {
     private distGridF: Int16Array
     private distGridB: Int16Array
 
-    // Active wave indicator
-    private activeWave: 'forward' | 'backward' = 'forward'
-
     // Scalar counters
     private stepCounter: number = 0
     private cycleCounter: number = 0
@@ -84,32 +81,26 @@ export default class WaveBiBatchAlgorithm extends BaseMazeSearch {
 
         let cyclesCount = 0
         let openedCount = 0
-        let isForward = true
 
         while (frontierF.length > 0 && frontierB.length > 0) {
             cyclesCount++
 
-            // Move a single frontier alternating sequentially without deciding which to move
-            const activeFrontier = isForward ? frontierF : frontierB
-            const activeVisited = isForward ? visitedF : visitedB
-            const oppositeVisited = isForward ? visitedB : visitedF
-            const activeParentMap = isForward ? parentMapF : parentMapB
-
-            const nextFrontier: GridCoord[] = []
+            // 1. Expand forward frontier
+            const nextFrontierF: GridCoord[] = []
             let meeting: GridCoord | null = null
 
-            for (const current of activeFrontier) {
+            for (const current of frontierF) {
                 openedCount++
                 const neighbors = this.getNeighbors(current, operator)
                 for (const neighbor of neighbors) {
                     const nKey = coordKey(neighbor)
-                    if (activeVisited.has(nKey)) continue
+                    if (visitedF.has(nKey)) continue
 
-                    activeVisited.add(nKey)
-                    activeParentMap.set(nKey, current)
-                    nextFrontier.push(neighbor)
+                    visitedF.add(nKey)
+                    parentMapF.set(nKey, current)
+                    nextFrontierF.push(neighbor)
 
-                    if (oppositeVisited.has(nKey)) {
+                    if (visitedB.has(nKey)) {
                         meeting = neighbor
                         break
                     }
@@ -120,11 +111,7 @@ export default class WaveBiBatchAlgorithm extends BaseMazeSearch {
                 }
             }
 
-            if (isForward) {
-                frontierF = nextFrontier
-            } else {
-                frontierB = nextFrontier
-            }
+            frontierF = nextFrontierF
 
             if (meeting) {
                 const path = this.mergePaths(meeting, parentMapF, parentMapB)
@@ -137,7 +124,42 @@ export default class WaveBiBatchAlgorithm extends BaseMazeSearch {
                 }
             }
 
-            isForward = !isForward
+            // 2. Expand backward frontier
+            const nextFrontierB: GridCoord[] = []
+            for (const current of frontierB) {
+                openedCount++
+                const neighbors = this.getNeighbors(current, operator)
+                for (const neighbor of neighbors) {
+                    const nKey = coordKey(neighbor)
+                    if (visitedB.has(nKey)) continue
+
+                    visitedB.add(nKey)
+                    parentMapB.set(nKey, current)
+                    nextFrontierB.push(neighbor)
+
+                    if (visitedF.has(nKey)) {
+                        meeting = neighbor
+                        break
+                    }
+                }
+
+                if (meeting) {
+                    break
+                }
+            }
+
+            frontierB = nextFrontierB
+
+            if (meeting) {
+                const path = this.mergePaths(meeting, parentMapF, parentMapB)
+                return {
+                    foundPath: path,
+                    openedCount,
+                    cyclesCount,
+                    isSuccess: true,
+                    meetingPoint: meeting,
+                }
+            }
         }
 
         return {
@@ -165,39 +187,34 @@ export default class WaveBiBatchAlgorithm extends BaseMazeSearch {
 
         this.cycleCounter++
 
-        // Move a single frontier alternating sequentially without deciding which to move
-        const isForward = this.activeWave === 'forward'
-        const activeFrontier = isForward ? this.frontierF : this.frontierB
-        const activeDistGrid = isForward ? this.distGridF : this.distGridB
-        const oppositeDistGrid = isForward ? this.distGridB : this.distGridF
-        const activeParentMap = isForward ? this.parentMapF : this.parentMapB
-
-        const nextFrontier: GridCoord[] = []
+        const nextFrontierF: GridCoord[] = []
+        const nextFrontierB: GridCoord[] = []
         const updatedCells: MazeCellUpdate[] = []
         let meetingPoint: GridCoord | null = null
 
-        for (const current of activeFrontier) {
+        // 1. Expand forward frontier
+        for (const current of this.frontierF) {
             this.openedCounter++
             const currentDist =
-                activeDistGrid[current.r * this.cols + current.c]
+                this.distGridF[current.r * this.cols + current.c]
             const nextDist = currentDist + 1
             const neighbors = this.getNeighbors(current, this.options.operator)
 
             for (const neighbor of neighbors) {
                 const nIdx = neighbor.r * this.cols + neighbor.c
-                if (activeDistGrid[nIdx] === -1) {
-                    activeDistGrid[nIdx] = nextDist
-                    activeParentMap.set(coordKey(neighbor), current)
-                    nextFrontier.push(neighbor)
+                if (this.distGridF[nIdx] === -1) {
+                    this.distGridF[nIdx] = nextDist
+                    this.parentMapF.set(coordKey(neighbor), current)
+                    nextFrontierF.push(neighbor)
                     this.visitedOrder.push(neighbor)
                     updatedCells.push({
                         coord: neighbor,
                         dist: nextDist,
-                        wave: this.activeWave,
+                        wave: 'forward',
                     })
 
                     // Meeting point condition: opposite wave has already reached this cell
-                    if (oppositeDistGrid[nIdx] !== -1) {
+                    if (this.distGridB[nIdx] !== -1) {
                         meetingPoint = neighbor
                         break
                     }
@@ -209,32 +226,57 @@ export default class WaveBiBatchAlgorithm extends BaseMazeSearch {
             }
         }
 
-        if (isForward) {
-            this.frontierF = nextFrontier
-        } else {
-            this.frontierB = nextFrontier
+        this.frontierF = nextFrontierF
+
+        if (meetingPoint) {
+            this.stepCounter++
+            return this.finalizeFound(meetingPoint, updatedCells)
         }
 
+        // 2. Expand backward frontier
+        for (const current of this.frontierB) {
+            this.openedCounter++
+            const currentDist =
+                this.distGridB[current.r * this.cols + current.c]
+            const nextDist = currentDist + 1
+            const neighbors = this.getNeighbors(current, this.options.operator)
+
+            for (const neighbor of neighbors) {
+                const nIdx = neighbor.r * this.cols + neighbor.c
+                if (this.distGridB[nIdx] === -1) {
+                    this.distGridB[nIdx] = nextDist
+                    this.parentMapB.set(coordKey(neighbor), current)
+                    nextFrontierB.push(neighbor)
+                    this.visitedOrder.push(neighbor)
+                    updatedCells.push({
+                        coord: neighbor,
+                        dist: nextDist,
+                        wave: 'backward',
+                    })
+
+                    // Meeting point condition: opposite wave has already reached this cell
+                    if (this.distGridF[nIdx] !== -1) {
+                        meetingPoint = neighbor
+                        break
+                    }
+                }
+            }
+
+            if (meetingPoint) {
+                break
+            }
+        }
+
+        this.frontierB = nextFrontierB
         this.stepCounter++
 
         if (meetingPoint) {
             return this.finalizeFound(meetingPoint, updatedCells)
         }
 
-        // Toggle active wave for the next step
-        this.activeWave = isForward ? 'backward' : 'forward'
-
         if (this.frontierF.length === 0 || this.frontierB.length === 0) {
             return this.finalizeNotFound()
         }
-
-        const waveLabel = isForward ? 'Пряма (Start)' : 'Зворотна (Goal)'
-        const curDist =
-            activeFrontier.length > 0
-                ? activeDistGrid[
-                      activeFrontier[0].r * this.cols + activeFrontier[0].c
-                  ] + 1
-                : this.cycleCounter
 
         return {
             stepIndex: this.stepCounter,
@@ -244,14 +286,13 @@ export default class WaveBiBatchAlgorithm extends BaseMazeSearch {
             updatedCells,
             openedCount: this.openedCounter,
             cycleCount: this.cycleCounter,
-            actionDescription: `Цикл #${this.cycleCounter} (${waveLabel} хвиля, d=${curDist}): пакетно розкрито ${activeFrontier.length} клітинок, новий фронт (${nextFrontier.length} клітинок).`,
+            actionDescription: `Цикл #${this.cycleCounter}: пакетно розкрито обидва фронти (прямий: ${nextFrontierF.length} клітинок, зворотний: ${nextFrontierB.length} клітинок).`,
             status: 'running',
         }
     }
 
     public reset(): void {
         this.isInitialized = false
-        this.activeWave = 'forward'
         this.frontierF = []
         this.frontierB = []
         this.parentMapF.clear()
@@ -387,7 +428,6 @@ export default class WaveBiBatchAlgorithm extends BaseMazeSearch {
         }
 
         // Standard initialization: start and goal wavefronts
-        this.activeWave = 'forward'
         this.distGridF[start.r * this.cols + start.c] = 0
         this.distGridB[goal.r * this.cols + goal.c] = 0
         this.frontierF = [start]
@@ -454,10 +494,9 @@ export default class WaveBiBatchAlgorithm extends BaseMazeSearch {
             statusText: `Зустріч хвиль у точці (${meeting.r}, ${meeting.c})! Довжина шляху: ${path.length - 1} кроків. Скорочення пошуку: ${reductionPct}%.`,
         }
 
-        const meetingDist =
-            this.activeWave === 'forward'
-                ? this.distGridF[meeting.r * this.cols + meeting.c]
-                : this.distGridB[meeting.r * this.cols + meeting.c]
+        const distF = this.distGridF[meeting.r * this.cols + meeting.c]
+        const distB = this.distGridB[meeting.r * this.cols + meeting.c]
+        const meetingDist = distF !== -1 ? distF : distB
 
         return {
             stepIndex: this.stepCounter,
@@ -468,7 +507,6 @@ export default class WaveBiBatchAlgorithm extends BaseMazeSearch {
             updatedCell: {
                 coord: meeting,
                 dist: meetingDist,
-                wave: this.activeWave,
             },
             openedCount: this.openedCounter,
             cycleCount: this.cycleCounter,

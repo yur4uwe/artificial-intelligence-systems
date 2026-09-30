@@ -161,8 +161,9 @@ export class SearchRunner<TStep extends StepEvent = StepEvent> {
         if (lastEvent) {
             this.runnerStatus = RunnerStatus.Finished
             this.currentStepIndex = this.history.length - 1
-            const lastStep = this.history[this.history.length - 1]
-            this.callbacks.onStep(lastStep)
+            for (const step of this.history) {
+                this.callbacks.onStep(step)
+            }
             this.callbacks.onFinish(lastEvent)
         }
 

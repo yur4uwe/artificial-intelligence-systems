@@ -55,7 +55,6 @@ export interface MazeMetrics {
 export interface MazeCellUpdate {
     coord: GridCoord
     dist: number
-    wave: 'forward' | 'backward'
 }
 
 export type MazeStepEvent = StepEvent & {
